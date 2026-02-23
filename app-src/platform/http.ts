@@ -108,6 +108,9 @@ export async function httpRequest(
           ? raw.data.slice(0, 300)
           : JSON.stringify(raw.data ?? "").slice(0, 300);
       debugWarn(TAG, `${upperMethod} ${finalUrl} → ${raw.status} (${elapsed}ms) | ${preview}`);
+      if (isDebugLogging() && raw.headers) {
+        debugWarn(TAG, `  response headers: ${JSON.stringify(raw.headers)}`);
+      }
     } else {
       debugLog(TAG, `✓ ${upperMethod} ${finalUrl} → ${raw.status} (${elapsed}ms)`);
     }
