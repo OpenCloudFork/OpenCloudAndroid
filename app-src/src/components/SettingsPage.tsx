@@ -1,4 +1,5 @@
-import { Monitor, Volume2, Mouse, Settings2, Globe, Save, Check, Search, X, Loader, Cpu, Zap, MessageSquare, Joystick, Sun, RefreshCw, RotateCcw, Mic, MicOff, Bug, Copy } from "lucide-react";
+import { Monitor, Volume2, Mouse, Settings2, Globe, Save, Check, Search, X, Loader, Cpu, Zap, MessageSquare, Joystick, Sun, RefreshCw, RotateCcw, Mic, MicOff, Bug, Copy, Share2 } from "lucide-react";
+import { Clipboard } from "@capacitor/clipboard";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { JSX } from "react";
 
@@ -454,6 +455,7 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
 
   const isLinux = platformInfo?.platform === "linux";
   const isLinuxArm = isLinux && (platformInfo?.arch === "arm64" || platformInfo?.arch === "arm");
+  const isAndroid = platformInfo?.platform === "android";
 
   const platformHardwareLabel = useMemo(() => {
     if (platformInfo) {
@@ -1082,6 +1084,17 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
         </section>
 
         {/* ── HDR Streaming ──────────────────────────────── */}
+        {isAndroid ? (
+        <section className="settings-section" style={{ opacity: 0.5 }}>
+          <div className="settings-section-header">
+            <Sun size={18} />
+            <h2>HDR Streaming</h2>
+          </div>
+          <div className="settings-rows">
+            <span className="settings-subtle-hint">HDR streaming is not supported on Android.</span>
+          </div>
+        </section>
+        ) : (
         <section className="settings-section">
           <div className="settings-section-header">
             <Sun size={18} />
@@ -1256,6 +1269,8 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
             )}
           </div>
         </section>
+
+        )}
 
         {/* ── Codec Diagnostics ──────────────────────────── */}
         <section className="settings-section">
@@ -1752,6 +1767,7 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
         </section>
 
         {/* ── Discord ────────────────────────────────────── */}
+        {!isAndroid && (
         <section className="settings-section">
           <div className="settings-section-header">
             <MessageSquare size={18} />
@@ -1787,8 +1803,10 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
             </div>
           </div>
         </section>
+        )}
 
         {/* ── Flight Controls ──────────────────────────────── */}
+        {!isAndroid && (
         <section className="settings-section">
           <div className="settings-section-header">
             <Joystick size={18} />
@@ -1801,6 +1819,7 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
             />
           </div>
         </section>
+        )}
 
         {/* ── Debug ──────────────────────────────────────── */}
         <section className="settings-section">
@@ -1832,7 +1851,7 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
                       showToast("No debug lines yet", "info");
                       return;
                     }
-                    await navigator.clipboard.writeText(text);
+                    await Clipboard.write({ string: text });
                     showToast(`Copied ${mod.getDebugLines(200).length} lines`, "success");
                   } catch (err) {
                     showToast("Copy failed: " + String(err), "error");
@@ -1841,6 +1860,34 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
               >
                 <Copy size={14} />
                 Copy Debug Info
+              </button>
+            </div>
+            <div className="settings-row">
+              <label className="settings-label">Share debug info</label>
+              <button
+                className="settings-btn-inline"
+                onClick={async () => {
+                  try {
+                    const mod = await import("@platform/debugLog");
+                    const text = mod.getDebugText(200);
+                    if (text.length === 0) {
+                      showToast("No debug lines yet", "info");
+                      return;
+                    }
+                    if (navigator.share) {
+                      await navigator.share({ title: "OpenNOW Debug Logs", text });
+                    } else {
+                      await Clipboard.write({ string: text });
+                      showToast("Share not available, copied to clipboard instead", "info");
+                    }
+                  } catch (err) {
+                    if (String(err).includes("AbortError")) return;
+                    showToast("Share failed: " + String(err), "error");
+                  }
+                }}
+              >
+                <Share2 size={14} />
+                Share Debug Info
               </button>
             </div>
             <span className="settings-subtle-hint">

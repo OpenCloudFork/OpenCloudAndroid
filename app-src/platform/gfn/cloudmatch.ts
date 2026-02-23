@@ -89,11 +89,6 @@ function resolveSignaling(response: CloudMatchResponse): {
   return { serverIp, signalingServer, signalingUrl, mediaConnectionInfo: resolveMediaConnectionInfo(connections, serverIp) };
 }
 
-function randomDeviceHash(): string {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 function parseResolution(resolution: string): { width: number; height: number } {
   const parts = resolution.split("x");
@@ -102,6 +97,7 @@ function parseResolution(resolution: string): { width: number; height: number } 
 
 function buildSessionRequest(appId: string, internalTitle: string, settings: StreamSettings, accountLinked: boolean): CloudMatchRequest {
   const { width, height } = parseResolution(settings.resolution);
+  const hdrEnabled = false;
   const bitDepth = colorQualityBitDepth(settings.colorQuality);
   const chromaFormat = colorQualityChromaFormat(settings.colorQuality);
   return {
@@ -109,46 +105,62 @@ function buildSessionRequest(appId: string, internalTitle: string, settings: Str
       appId, internalTitle: internalTitle || null,
       availableSupportedControllers: [],
       networkTestSessionId: null, parentSessionId: null,
-      clientIdentification: "GFN-PC", deviceHashId: randomDeviceHash(),
+      clientIdentification: "GFN-PC", deviceHashId: crypto.randomUUID(),
       clientVersion: "30.0", sdkVersion: "1.0", streamerVersion: 1,
       clientPlatformName: "windows",
       clientRequestMonitorSettings: [{
         widthInPixels: width, heightInPixels: height, framesPerSecond: settings.fps,
-        sdrHdrMode: bitDepth >= 10 ? 1 : 0,
-        displayData: { desiredContentMaxLuminance: 1000, desiredContentMinLuminance: 0, desiredContentMaxFrameAverageLuminance: 500 },
-        dpi: 96,
+        sdrHdrMode: hdrEnabled ? 1 : 0,
+        displayData: {
+          desiredContentMaxLuminance: hdrEnabled ? 1000 : 0,
+          desiredContentMinLuminance: 0,
+          desiredContentMaxFrameAverageLuminance: hdrEnabled ? 500 : 0,
+        },
+        dpi: 100,
       }],
       useOps: true, audioMode: 2,
       metaData: [
+        { key: "SubSessionId", value: crypto.randomUUID() },
         { key: "wssignaling", value: "1" },
         { key: "GSStreamerType", value: "WebRTC" },
         { key: "networkType", value: "Unknown" },
+        { key: "ClientImeSupport", value: "0" },
+        { key: "clientPhysicalResolution", value: JSON.stringify({ horizontalPixels: width, verticalPixels: height }) },
+        { key: "surroundAudioInfo", value: "2" },
       ],
-      sdrHdrMode: bitDepth >= 10 ? 1 : 0,
+      sdrHdrMode: hdrEnabled ? 1 : 0,
       clientDisplayHdrCapabilities: null,
-      surroundAudioInfo: 0, remoteControllersBitmap: 6,
-      clientTimezoneOffset: new Date().getTimezoneOffset(),
+      surroundAudioInfo: 0, remoteControllersBitmap: 0,
+      clientTimezoneOffset: new Date().getTimezoneOffset() * 60000,
       enhancedStreamMode: 1, appLaunchMode: 1,
       secureRTSPSupported: false, partnerCustomData: "",
-      accountLinked, enablePersistingInGameSettings: true, userAge: 99,
+      accountLinked, enablePersistingInGameSettings: true, userAge: 26,
       requestedStreamingFeatures: {
-        reflex: true, bitDepth, cloudGsync: false, enabledL4S: false,
-        mouseMovementFlags: 3, trueHdr: bitDepth >= 10,
+        reflex: settings.fps >= 120, bitDepth, cloudGsync: false, enabledL4S: false,
+        mouseMovementFlags: 0, trueHdr: hdrEnabled,
         supportedHidDevices: 0, profile: 0, fallbackToLogicalResolution: false,
         hidDevices: null, chromaFormat, prefilterMode: 0, prefilterSharpness: 0,
-        prefilterNoiseReduction: 0, hudStreamingMode: 0, sdrColorSpace: 0, hdrColorSpace: 0,
+        prefilterNoiseReduction: 0, hudStreamingMode: 0, sdrColorSpace: 2, hdrColorSpace: 0,
       },
     },
   };
 }
 
-function commonHeaders(token: string, zone: string): Record<string, string> {
+function commonHeaders(token: string, _zone: string): Record<string, string> {
+  const clientId = crypto.randomUUID();
+  const deviceId = crypto.randomUUID();
   return {
     Accept: "application/json", "Content-Type": "application/json",
     Authorization: `GFNJWT ${token}`,
-    "nv-client-id": "ec7e38d4-03af-4b58-b131-cfb0495903ab",
+    Origin: "https://play.geforcenow.com",
+    Referer: "https://play.geforcenow.com/",
+    "nv-browser-type": "CHROME",
+    "nv-client-id": clientId,
     "nv-client-type": "NATIVE", "nv-client-version": GFN_CLIENT_VERSION,
-    "nv-client-streamer": "NVIDIA-CLASSIC", "nv-device-os": "WINDOWS", "nv-device-type": "DESKTOP",
+    "nv-client-streamer": "NVIDIA-CLASSIC",
+    "nv-device-make": "UNKNOWN", "nv-device-model": "UNKNOWN",
+    "nv-device-os": "WINDOWS", "nv-device-type": "DESKTOP",
+    "x-device-id": deviceId,
     "User-Agent": GFN_USER_AGENT,
   };
 }
@@ -157,18 +169,18 @@ export async function createSessionWeb(input: SessionCreateRequest): Promise<Ses
   const token = input.token!;
   const base = (input.streamingBaseUrl ?? "https://prod.cloudmatchbeta.nvidiagrid.net/").replace(/\/$/, "");
   const zone = input.zone || "";
-  const url = zone ? `${base}/v2/session?keyboardLayout=en-US&languageCode=en_US&zone=${encodeURIComponent(zone)}`
-    : `${base}/v2/session?keyboardLayout=en-US&languageCode=en_US`;
+  const url = `${base}/v2/session?keyboardLayout=en-US&languageCode=en_US`;
 
   const body = buildSessionRequest(input.appId, input.internalTitle, input.settings, input.accountLinked ?? false);
 
   debugLog("[CloudMatch]", `createSession appId=${input.appId} base=${base} zone=${zone}`);
 
-  const response = await httpRequest("PUT", url, { headers: commonHeaders(token, zone), data: body });
+  const response = await httpRequest("POST", url, { headers: commonHeaders(token, zone), data: body });
 
   if (!response.ok) {
     const text = await response.text();
     debugError("[CloudMatch]", `createSession FAILED: HTTP ${response.status} | body=${text.slice(0, 500)}`);
+    debugError("[CloudMatch]", `createSession response headers: ${JSON.stringify(response.headers)}`);
     throw SessionError.fromResponse(response.status, text);
   }
 
@@ -194,14 +206,16 @@ export async function pollSessionWeb(input: SessionPollRequest): Promise<Session
   const serverIp = input.serverIp;
   const base = serverIp ? `https://${serverIp}` : (input.streamingBaseUrl ?? "https://prod.cloudmatchbeta.nvidiagrid.net").replace(/\/$/, "");
   const zone = input.zone || "";
-  const url = zone
-    ? `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US&zone=${encodeURIComponent(zone)}`
-    : `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US`;
+  const url = `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US`;
 
-  const response = await httpGet(url, { headers: commonHeaders(token, zone) });
+  const headers = commonHeaders(token, zone);
+  delete headers["Origin"];
+  delete headers["Referer"];
+  const response = await httpGet(url, { headers });
   if (!response.ok) {
     const text = await response.text();
     debugError("[CloudMatch]", `pollSession FAILED: HTTP ${response.status} sessionId=${input.sessionId} | ${text.slice(0, 300)}`);
+    debugError("[CloudMatch]", `pollSession response headers: ${JSON.stringify(response.headers)}`);
     throw SessionError.fromResponse(response.status, text);
   }
 
@@ -235,9 +249,7 @@ export async function stopSessionWeb(input: SessionStopRequest): Promise<void> {
   const serverIp = input.serverIp;
   const base = serverIp ? `https://${serverIp}` : (input.streamingBaseUrl ?? "https://prod.cloudmatchbeta.nvidiagrid.net").replace(/\/$/, "");
   const zone = input.zone || "";
-  const url = zone
-    ? `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US&zone=${encodeURIComponent(zone)}`
-    : `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US`;
+  const url = `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US`;
   await httpRequest("DELETE", url, { headers: commonHeaders(token, zone) });
 }
 

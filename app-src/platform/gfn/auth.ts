@@ -12,6 +12,7 @@ import { fetchSubscriptionWeb, fetchDynamicRegionsWeb } from "./subscription";
 import { preferencesGet, preferencesSet, preferencesRemove } from "./storage";
 import AuthWebView from "./authWebView";
 import { httpGet, httpPost } from "../http";
+import { debugLog } from "../debugLog";
 
 const SERVICE_URLS_ENDPOINT = "https://pcs.geforcenow.com/v1/serviceUrls";
 const TOKEN_ENDPOINT = "https://login.nvidia.com/token";
@@ -593,9 +594,14 @@ export class AndroidAuthService {
   }
 
   async resolveJwtToken(explicitToken?: string): Promise<string> {
-    if (explicitToken?.trim()) return explicitToken;
+    if (explicitToken?.trim()) {
+      debugLog("[Auth]", "resolveJwtToken: using explicit token");
+      return explicitToken;
+    }
     const session = await this.ensureValidSession();
     if (!session) throw new Error("No authenticated session available");
+    const tokenType = session.tokens.idToken ? "idToken" : "accessToken";
+    debugLog("[Auth]", `resolveJwtToken: using ${tokenType}`);
     return session.tokens.idToken ?? session.tokens.accessToken;
   }
 
