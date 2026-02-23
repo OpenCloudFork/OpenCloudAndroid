@@ -66,13 +66,13 @@ CapApp.addListener("backButton", ({ canGoBack }) => {
   }
 });
 
-let authInitialized = false;
+let authInitPromise: Promise<void> | null = null;
 
 async function ensureAuthInit(): Promise<void> {
-  if (!authInitialized) {
-    authInitialized = true;
-    await authService.initialize();
+  if (!authInitPromise) {
+    authInitPromise = authService.initialize();
   }
+  await authInitPromise;
 }
 
 export const openNowPlatform: OpenNowApi = {

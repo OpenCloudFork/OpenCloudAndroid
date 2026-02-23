@@ -12,6 +12,7 @@ import { colorQualityBitDepth, colorQualityChromaFormat } from "@shared/gfn";
 import type { CloudMatchRequest, CloudMatchResponse, GetSessionsResponse } from "./types";
 import { SessionError } from "./errorCodes";
 import { httpGet, httpRequest } from "../http";
+import { debugLog, debugWarn, debugError } from "../debugLog";
 
 const GFN_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
@@ -160,17 +161,25 @@ export async function createSessionWeb(input: SessionCreateRequest): Promise<Ses
     : `${base}/v2/session?keyboardLayout=en-US&languageCode=en_US`;
 
   const body = buildSessionRequest(input.appId, input.internalTitle, input.settings, input.accountLinked ?? false);
+
+  debugLog("[CloudMatch]", `createSession appId=${input.appId} base=${base} zone=${zone}`);
+
   const response = await httpRequest("PUT", url, { headers: commonHeaders(token, zone), data: body });
 
   if (!response.ok) {
     const text = await response.text();
+    debugError("[CloudMatch]", `createSession FAILED: HTTP ${response.status} | body=${text.slice(0, 500)}`);
     throw SessionError.fromResponse(response.status, text);
   }
 
   const data = (await response.json()) as CloudMatchResponse;
   if (data.requestStatus.statusCode !== 0) {
-    throw SessionError.fromResponse(0, JSON.stringify(data));
+    const raw = JSON.stringify(data);
+    debugError("[CloudMatch]", `createSession statusCode=${data.requestStatus.statusCode} desc=${data.requestStatus.statusDescription ?? "none"} | ${raw.slice(0, 500)}`);
+    throw SessionError.fromResponse(0, raw);
   }
+
+  debugLog("[CloudMatch]", `createSession OK: sessionId=${data.session.sessionId} status=${data.session.status}`);
 
   return {
     sessionId: data.session.sessionId, status: data.session.status, zone,
@@ -192,12 +201,14 @@ export async function pollSessionWeb(input: SessionPollRequest): Promise<Session
   const response = await httpGet(url, { headers: commonHeaders(token, zone) });
   if (!response.ok) {
     const text = await response.text();
+    debugError("[CloudMatch]", `pollSession FAILED: HTTP ${response.status} sessionId=${input.sessionId} | ${text.slice(0, 300)}`);
     throw SessionError.fromResponse(response.status, text);
   }
 
   const data = (await response.json()) as CloudMatchResponse;
   if (data.requestStatus.statusCode !== 0 && data.requestStatus.statusCode !== undefined) {
     if (data.requestStatus.statusCode >= 2) {
+      debugError("[CloudMatch]", `pollSession statusCode=${data.requestStatus.statusCode} desc=${data.requestStatus.statusDescription ?? "none"}`);
       throw SessionError.fromResponse(0, JSON.stringify(data));
     }
   }
@@ -207,6 +218,8 @@ export async function pollSessionWeb(input: SessionPollRequest): Promise<Session
   if (sessionStatus === 2 || sessionStatus === 3) {
     try { signaling = resolveSignaling(data); } catch { /* not ready yet */ }
   }
+
+  debugLog("[CloudMatch]", `pollSession sessionId=${input.sessionId} status=${sessionStatus} queue=${data.session.queuePosition ?? "N/A"}`);
 
   return {
     sessionId: data.session.sessionId, status: sessionStatus, zone,
@@ -231,15 +244,21 @@ export async function stopSessionWeb(input: SessionStopRequest): Promise<void> {
 export async function getActiveSessionsWeb(token: string, streamingBaseUrl?: string): Promise<ActiveSessionInfo[]> {
   const base = (streamingBaseUrl ?? "https://prod.cloudmatchbeta.nvidiagrid.net").replace(/\/$/, "");
   const url = `${base}/v2/session?keyboardLayout=en-US&languageCode=en_US`;
+  debugLog("[CloudMatch]", `getActiveSessions base=${base}`);
   const response = await httpGet(url, { headers: commonHeaders(token, "") });
-  if (!response.ok) return [];
+  if (!response.ok) {
+    debugWarn("[CloudMatch]", `getActiveSessions HTTP ${response.status}`);
+    return [];
+  }
 
   const data = (await response.json()) as GetSessionsResponse;
-  return (data.sessions ?? []).map((s) => ({
+  const sessions = (data.sessions ?? []).map((s) => ({
     sessionId: s.sessionId, status: s.status, gpuType: s.gpuType,
     appId: parseInt(s.sessionRequestData?.appId ?? "0", 10) || 0,
     serverIp: s.sessionControlInfo?.ip,
   }));
+  debugLog("[CloudMatch]", `getActiveSessions → ${sessions.length} session(s)`);
+  return sessions;
 }
 
 export async function claimSessionWeb(input: SessionClaimRequest): Promise<SessionInfo> {

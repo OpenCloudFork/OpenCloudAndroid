@@ -202,6 +202,13 @@ export const ERROR_MESSAGES: Map<number, ErrorMessageEntry> = new Map([
 
   // Server errors
   [
+    3237093632,
+    {
+      title: "Server Error",
+      description: "The CloudMatch server rejected the request. Check debug logs for the HTTP status and response body.",
+    },
+  ],
+  [
     3237093634,
     {
       title: "Access Forbidden",

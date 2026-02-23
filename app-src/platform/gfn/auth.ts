@@ -9,7 +9,7 @@ import type {
   SubscriptionInfo,
 } from "@shared/gfn";
 import { fetchSubscriptionWeb, fetchDynamicRegionsWeb } from "./subscription";
-import { preferencesGet, preferencesSet } from "./storage";
+import { preferencesGet, preferencesSet, preferencesRemove } from "./storage";
 import AuthWebView from "./authWebView";
 import { httpGet, httpPost } from "../http";
 
@@ -322,15 +322,21 @@ export class AndroidAuthService {
             ...parsed.session,
             provider: normalizeProvider(parsed.session.provider),
           };
-          await this.enrichUserTier();
-          await this.persist();
           console.log(`[Auth] Session restored for user ${this.session.user.displayName} (tier=${this.session.user.membershipTier})`);
+          console.log(`[Auth] Token expiresAt=${new Date(this.session.tokens.expiresAt).toISOString()}, hasRefresh=${!!this.session.tokens.refreshToken}`);
+
+          try {
+            await this.enrichUserTier();
+            await this.persist();
+          } catch (enrichErr) {
+            console.warn("[Auth] enrichUserTier during init failed (session preserved):", enrichErr);
+          }
         }
+      } else {
+        console.log("[Auth] No persisted auth state found.");
       }
     } catch (err) {
       console.warn("[Auth] Failed to restore persisted auth state:", err);
-      this.session = null;
-      this.selectedProvider = defaultProvider();
     }
   }
 
@@ -464,10 +470,11 @@ export class AndroidAuthService {
   }
 
   async logout(): Promise<void> {
+    console.log("[Auth] Logging out — clearing session and storage.");
     this.session = null;
     this.cachedSubscription = null;
     this.cachedVpcId = null;
-    await this.persist();
+    await preferencesRemove(AUTH_STATE_KEY);
   }
 
   async getSubscription(): Promise<SubscriptionInfo | null> {
@@ -516,7 +523,12 @@ export class AndroidAuthService {
   }
 
   private shouldRefresh(tokens: AuthTokens): boolean {
-    return tokens.expiresAt - Date.now() < 10 * 60 * 1000;
+    const ttlMs = tokens.expiresAt - Date.now();
+    const needsRefresh = ttlMs < 5 * 60 * 1000;
+    if (needsRefresh) {
+      console.log(`[Auth] Token needs refresh: TTL=${Math.round(ttlMs / 1000)}s, expiresAt=${new Date(tokens.expiresAt).toISOString()}`);
+    }
+    return needsRefresh;
   }
 
   async ensureValidSessionWithStatus(forceRefresh = false): Promise<AuthSessionResult> {

@@ -44,6 +44,8 @@ import { LibraryPage } from "./components/LibraryPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { StreamLoading } from "./components/StreamLoading";
 import { StreamView } from "./components/StreamView";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ToastProvider } from "./components/Toast";
 
 const codecOptions: VideoCodec[] = ["H264", "H265", "AV1"];
 const resolutionOptions = ["1280x720", "1920x1080", "2560x1440", "3840x2160", "2560x1080", "3440x1440"];
@@ -189,6 +191,7 @@ function toCodeLabel(code: number | undefined): string | undefined {
   if (code === undefined) return undefined;
   if (code === 3237093643) return `SessionLimitExceeded (${code})`;
   if (code === 3237093718) return `SessionInsufficientPlayabilityLevel (${code})`;
+  if (code === 3237093632) return `SessionServerError (${code})`;
   return `GFN Error ${code}`;
 }
 
@@ -248,10 +251,16 @@ function toLaunchErrorState(error: unknown, stage: StreamLoadingStatus): LaunchE
     };
   }
 
+  const httpStatus =
+    error && typeof error === "object" && "httpStatus" in error && typeof error.httpStatus === "number"
+      ? error.httpStatus
+      : 0;
+  const httpDetail = httpStatus > 0 ? ` (HTTP ${httpStatus})` : "";
+
   return {
     stage,
     title: titleFromError || "Launch Failed",
-    description: descriptionFromError || messageFromError || statusDescription || unknownMessage,
+    description: (descriptionFromError || messageFromError || statusDescription || unknownMessage) + httpDetail,
     codeLabel: toCodeLabel(code),
   };
 }
@@ -1129,7 +1138,22 @@ export function App(): JSX.Element {
     setQueuePosition(undefined);
 
     try {
-      const token = authSession?.tokens.idToken ?? authSession?.tokens.accessToken;
+      // Ensure token is fresh before any launch API calls
+      let token = authSession?.tokens.idToken ?? authSession?.tokens.accessToken;
+      try {
+        const freshResult = await window.openNow.getAuthSession({ forceRefresh: false });
+        if (freshResult.session) {
+          const freshToken = freshResult.session.tokens.idToken ?? freshResult.session.tokens.accessToken;
+          if (freshToken) {
+            token = freshToken;
+            if (freshResult.session !== authSession) {
+              setAuthSession(freshResult.session);
+            }
+          }
+        }
+      } catch (refreshErr) {
+        console.warn("[App] Pre-launch token refresh failed, using existing token:", refreshErr);
+      }
       const selectedVariantId = variantByGameId[game.id] ?? defaultVariantId(game);
 
       // Resolve appId
@@ -1844,6 +1868,8 @@ export function App(): JSX.Element {
 
   // Main app layout
   return (
+    <ToastProvider>
+    <ErrorBoundary onGoHome={() => setCurrentPage("home")}>
     <div className="app-container">
       {startupRefreshNotice && (
         <div className={`auth-refresh-notice auth-refresh-notice--${startupRefreshNotice.tone}`}>
@@ -1914,5 +1940,7 @@ export function App(): JSX.Element {
         )}
       </main>
     </div>
+    </ErrorBoundary>
+    </ToastProvider>
   );
 }
