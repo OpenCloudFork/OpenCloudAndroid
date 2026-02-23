@@ -11,6 +11,7 @@ import type {
 import { colorQualityBitDepth, colorQualityChromaFormat } from "@shared/gfn";
 import type { CloudMatchRequest, CloudMatchResponse, GetSessionsResponse } from "./types";
 import { SessionError } from "./errorCodes";
+import { nativeFetch } from "./nativeHttp";
 
 const GFN_USER_AGENT =
   "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 OpenCloudAndroid/1.0.0";
@@ -154,7 +155,7 @@ export async function createSessionWeb(input: SessionCreateRequest): Promise<Ses
     : `${base}/v2/session?keyboardLayout=en-US&languageCode=en_US`;
 
   const body = buildSessionRequest(input.appId, input.internalTitle, input.settings, input.accountLinked ?? false);
-  const response = await fetch(url, { method: "PUT", headers: commonHeaders(token, zone), body: JSON.stringify(body) });
+  const response = await nativeFetch(url, { method: "PUT", headers: commonHeaders(token, zone), body: JSON.stringify(body) });
 
   if (!response.ok) {
     const text = await response.text();
@@ -183,7 +184,7 @@ export async function pollSessionWeb(input: SessionPollRequest): Promise<Session
     ? `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US&zone=${encodeURIComponent(zone)}`
     : `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US`;
 
-  const response = await fetch(url, { headers: commonHeaders(token, zone) });
+  const response = await nativeFetch(url, { headers: commonHeaders(token, zone) });
   if (!response.ok) {
     const text = await response.text();
     throw SessionError.fromResponse(response.status, text);
@@ -219,13 +220,13 @@ export async function stopSessionWeb(input: SessionStopRequest): Promise<void> {
   const url = zone
     ? `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US&zone=${encodeURIComponent(zone)}`
     : `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US`;
-  await fetch(url, { method: "DELETE", headers: commonHeaders(token, zone) });
+  await nativeFetch(url, { method: "DELETE", headers: commonHeaders(token, zone) });
 }
 
 export async function getActiveSessionsWeb(token: string, streamingBaseUrl?: string): Promise<ActiveSessionInfo[]> {
   const base = (streamingBaseUrl ?? "https://prod.cloudmatchbeta.nvidiagrid.net").replace(/\/$/, "");
   const url = `${base}/v2/session?keyboardLayout=en-US&languageCode=en_US`;
-  const response = await fetch(url, { headers: commonHeaders(token, "") });
+  const response = await nativeFetch(url, { headers: commonHeaders(token, "") });
   if (!response.ok) return [];
 
   const data = (await response.json()) as GetSessionsResponse;
@@ -245,7 +246,7 @@ export async function claimSessionWeb(input: SessionClaimRequest): Promise<Sessi
     if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
 
     const url = `${base}/v2/session/${input.sessionId}?keyboardLayout=en-US&languageCode=en_US`;
-    const response = await fetch(url, { headers: commonHeaders(token, "") });
+    const response = await nativeFetch(url, { headers: commonHeaders(token, "") });
     if (!response.ok) continue;
 
     const data = (await response.json()) as CloudMatchResponse;

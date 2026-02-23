@@ -2938,3 +2938,53 @@ body,
   from { opacity: 1; transform: translateX(0) scale(1); }
   to { opacity: 0; transform: translateX(20px) scale(0.96); }
 }
+
+/* ── API Error Banner ────────────────────────────── */
+.api-error-banner {
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+.api-error-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.12), rgba(10, 10, 12, 0.95));
+  color: #fca5a5;
+  font-size: 0.82rem;
+  animation: fade-in 220ms var(--ease);
+}
+.api-error-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.api-error-banner-text strong {
+  color: #fecaca;
+  font-size: 0.85rem;
+}
+.api-error-banner-text span {
+  opacity: 0.8;
+  word-break: break-word;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+.api-error-banner-retry {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fecaca;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+}
+.api-error-banner-retry:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.7);
+}

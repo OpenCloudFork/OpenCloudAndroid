@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -16,6 +17,13 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AuthWebViewPlugin.class);
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        // Enable WebView debugging for debug builds.
+        // Connect via chrome://inspect on a desktop Chrome browser
+        // while the device is connected via USB with USB debugging enabled.
+        if (BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
     }
 
     public void enterImmersiveMode() {

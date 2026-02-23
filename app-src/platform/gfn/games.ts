@@ -1,4 +1,5 @@
 import type { GameInfo, GameVariant } from "@shared/gfn";
+import { nativeFetch } from "./nativeHttp";
 
 const GRAPHQL_URL = "https://games.geforce.com/graphql";
 const PANELS_QUERY_HASH = "f8e26265a5db5c20e1334a6872cf04b6e3970507697f6ae55a6ddefa5420daf0";
@@ -38,7 +39,7 @@ async function getVpcId(token: string, providerStreamingBaseUrl?: string): Promi
   const base = providerStreamingBaseUrl?.trim() || "https://prod.cloudmatchbeta.nvidiagrid.net/";
   const normalizedBase = base.endsWith("/") ? base : `${base}/`;
   try {
-    const response = await fetch(`${normalizedBase}v2/serverInfo`, {
+    const response = await nativeFetch(`${normalizedBase}v2/serverInfo`, {
       headers: {
         Accept: "application/json", Authorization: `GFNJWT ${token}`,
         "nv-client-id": LCARS_CLIENT_ID, "nv-client-type": "NATIVE", "nv-client-version": GFN_CLIENT_VERSION,
@@ -76,7 +77,7 @@ async function fetchPanels(token: string, panelNames: string[], vpcId: string): 
   const extensions = JSON.stringify({ persistedQuery: { sha256Hash: PANELS_QUERY_HASH } });
   const requestType = panelNames.includes("LIBRARY") ? "panels/Library" : "panels/MainV2";
   const params = new URLSearchParams({ requestType, extensions, huId: randomHuId(), variables });
-  const response = await fetch(`${GRAPHQL_URL}?${params.toString()}`, {
+  const response = await nativeFetch(`${GRAPHQL_URL}?${params.toString()}`, {
     headers: {
       Accept: "application/json, text/plain, */*", "Content-Type": "application/graphql",
       Origin: "https://play.geforcenow.com", Referer: "https://play.geforcenow.com/",
@@ -111,7 +112,7 @@ export async function fetchLibraryGamesWeb(token: string, providerStreamingBaseU
 
 export async function fetchPublicGamesWeb(): Promise<GameInfo[]> {
   try {
-    const response = await fetch("https://static.nvidiagrid.net/supported-public-game-list/locales/gfnpc-en-US.json", {
+    const response = await nativeFetch("https://static.nvidiagrid.net/supported-public-game-list/locales/gfnpc-en-US.json", {
       headers: { Accept: "application/json" },
     });
     if (!response.ok) return [];
@@ -134,7 +135,7 @@ export async function resolveLaunchAppIdWeb(
   const extensions = JSON.stringify({ persistedQuery: { sha256Hash: APP_METADATA_QUERY_HASH } });
   const params = new URLSearchParams({ requestType: "appMetaData", extensions, huId: randomHuId(), variables });
   try {
-    const response = await fetch(`${GRAPHQL_URL}?${params.toString()}`, {
+    const response = await nativeFetch(`${GRAPHQL_URL}?${params.toString()}`, {
       headers: {
         Accept: "application/json, text/plain, */*", "Content-Type": "application/graphql",
         Origin: "https://play.geforcenow.com", Referer: "https://play.geforcenow.com/",

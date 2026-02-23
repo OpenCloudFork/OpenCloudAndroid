@@ -11,6 +11,7 @@ import type {
 import { fetchSubscriptionWeb, fetchDynamicRegionsWeb } from "./subscription";
 import { preferencesGet, preferencesSet } from "./storage";
 import AuthWebView from "./authWebView";
+import { nativeFetch } from "./nativeHttp";
 
 const SERVICE_URLS_ENDPOINT = "https://pcs.geforcenow.com/v1/serviceUrls";
 const TOKEN_ENDPOINT = "https://login.nvidia.com/token";
@@ -142,6 +143,7 @@ function buildAuthUrl(provider: LoginProvider, challenge: string): string {
 }
 
 async function exchangeAuthorizationCode(code: string, verifier: string): Promise<AuthTokens> {
+  console.log("[Auth] Exchanging authorization code for tokens...");
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -149,7 +151,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string): Promis
     code_verifier: verifier,
   });
 
-  const response = await fetch(TOKEN_ENDPOINT, {
+  const response = await nativeFetch(TOKEN_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -167,6 +169,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string): Promis
   }
 
   const payload = (await response.json()) as TokenResponse;
+  console.log("[Auth] Token exchange succeeded. Tokens saved.");
   return {
     accessToken: payload.access_token,
     refreshToken: payload.refresh_token,
@@ -176,6 +179,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string): Promis
 }
 
 async function refreshAuthTokens(refreshToken: string): Promise<AuthTokens> {
+  console.log("[Auth] Refreshing access token via refresh_token...");
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
@@ -183,7 +187,7 @@ async function refreshAuthTokens(refreshToken: string): Promise<AuthTokens> {
     scope: SCOPES,
   });
 
-  const response = await fetch(TOKEN_ENDPOINT, {
+  const response = await nativeFetch(TOKEN_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -211,6 +215,7 @@ async function refreshAuthTokens(refreshToken: string): Promise<AuthTokens> {
 }
 
 async function refreshViaClientToken(refreshToken: string): Promise<AuthTokens> {
+  console.log("[Auth] Refreshing via client token exchange...");
   const body = new URLSearchParams({
     grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
     subject_token: refreshToken,
@@ -220,7 +225,7 @@ async function refreshViaClientToken(refreshToken: string): Promise<AuthTokens> 
     scope: SCOPES,
   });
 
-  const response = await fetch(TOKEN_ENDPOINT, {
+  const response = await nativeFetch(TOKEN_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -267,7 +272,7 @@ async function fetchUserInfo(tokens: AuthTokens): Promise<AuthUser> {
     };
   }
 
-  const response = await fetch(USERINFO_ENDPOINT, {
+  const response = await nativeFetch(USERINFO_ENDPOINT, {
     headers: {
       Authorization: `Bearer ${tokens.accessToken}`,
       Origin: "https://nvfile",
@@ -306,9 +311,11 @@ export class AndroidAuthService {
   private pendingPkce: { verifier: string; challenge: string } | null = null;
 
   async initialize(): Promise<void> {
+    console.log("[Auth] Initializing — loading persisted tokens...");
     try {
       const raw = await preferencesGet(AUTH_STATE_KEY);
       if (raw) {
+        console.log("[Auth] Found persisted auth state, restoring...");
         const parsed = JSON.parse(raw) as PersistedAuthState;
         if (parsed.selectedProvider) {
           this.selectedProvider = normalizeProvider(parsed.selectedProvider);
@@ -320,9 +327,11 @@ export class AndroidAuthService {
           };
           await this.enrichUserTier();
           await this.persist();
+          console.log(`[Auth] Session restored for user ${this.session.user.displayName} (tier=${this.session.user.membershipTier})`);
         }
       }
-    } catch {
+    } catch (err) {
+      console.warn("[Auth] Failed to restore persisted auth state:", err);
       this.session = null;
       this.selectedProvider = defaultProvider();
     }
@@ -334,13 +343,14 @@ export class AndroidAuthService {
       selectedProvider: this.selectedProvider,
     };
     await preferencesSet(AUTH_STATE_KEY, JSON.stringify(payload));
+    console.log("[Auth] Tokens persisted to Capacitor Preferences.");
   }
 
   async getProviders(): Promise<LoginProvider[]> {
     if (this.providers.length > 0) return this.providers;
 
     try {
-      const response = await fetch(SERVICE_URLS_ENDPOINT, {
+      const response = await nativeFetch(SERVICE_URLS_ENDPOINT, {
         headers: { Accept: "application/json", "User-Agent": GFN_USER_AGENT },
       });
 
@@ -405,7 +415,7 @@ export class AndroidAuthService {
     if (token) headers.Authorization = `GFNJWT ${token}`;
 
     try {
-      const response = await fetch(`${base}v2/serverInfo`, { headers });
+      const response = await nativeFetch(`${base}v2/serverInfo`, { headers });
       if (!response.ok) return [];
 
       const payload = (await response.json()) as ServerInfoResponse;

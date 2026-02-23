@@ -281,6 +281,7 @@ export function App(): JSX.Element {
   const [selectedGameId, setSelectedGameId] = useState("");
   const [variantByGameId, setVariantByGameId] = useState<Record<string, string>>({});
   const [isLoadingGames, setIsLoadingGames] = useState(false);
+  const [gamesError, setGamesError] = useState<{ message: string; status?: number } | null>(null);
 
   // Settings State
   const [settings, setSettings] = useState<Settings>({
@@ -550,7 +551,11 @@ export function App(): JSX.Element {
               providerStreamingBaseUrl: persistedSession.provider.streamingServiceUrl,
             });
             setLibraryGames(libGames);
-          } catch {
+            setGamesError(null);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[App] Games fetch failed:", msg);
+            setGamesError({ message: msg });
             // Fallback to public games
             const publicGames = await window.openNow.fetchPublicGames();
             setGames(publicGames);
@@ -955,8 +960,12 @@ export function App(): JSX.Element {
         providerStreamingBaseUrl: session.provider.streamingServiceUrl,
       });
       setLibraryGames(libGames);
+      setGamesError(null);
     } catch (error) {
-      setLoginError(error instanceof Error ? error.message : "Login failed");
+      const msg = error instanceof Error ? error.message : "Login failed";
+      console.error("[App] Login/games fetch failed:", msg);
+      setLoginError(msg);
+      setGamesError({ message: msg });
     } finally {
       setIsLoggingIn(false);
     }
@@ -1001,11 +1010,44 @@ export function App(): JSX.Element {
         setSelectedGameId(result[0]?.id ?? "");
       }
     } catch (error) {
-      console.error("Failed to load games:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error("[App] Failed to load games:", msg);
+      setGamesError({ message: msg });
     } finally {
       setIsLoadingGames(false);
     }
   }, [authSession, effectiveStreamingBaseUrl]);
+
+  const retryLoadAll = useCallback(async () => {
+    if (!authSession) return;
+    setGamesError(null);
+    setIsLoadingGames(true);
+    const token = authSession.tokens.idToken ?? authSession.tokens.accessToken;
+    const baseUrl = authSession.provider.streamingServiceUrl;
+    try {
+      const [mainGames, libGames] = await Promise.all([
+        window.openNow.fetchMainGames({ token, providerStreamingBaseUrl: baseUrl }),
+        window.openNow.fetchLibraryGames({ token, providerStreamingBaseUrl: baseUrl }),
+      ]);
+      setGames(mainGames);
+      setSource("main");
+      setSelectedGameId(mainGames[0]?.id ?? "");
+      setLibraryGames(libGames);
+      setGamesError(null);
+
+      try {
+        await loadSubscriptionInfo(authSession);
+      } catch {
+        console.warn("[App] Subscription reload failed");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[App] Retry load failed:", msg);
+      setGamesError({ message: msg });
+    } finally {
+      setIsLoadingGames(false);
+    }
+  }, [authSession, loadSubscriptionInfo]);
 
   const claimAndConnectSession = useCallback(async (existingSession: ActiveSessionInfo): Promise<void> => {
     const token = authSession?.tokens.idToken ?? authSession?.tokens.accessToken;
@@ -1822,6 +1864,19 @@ export function App(): JSX.Element {
       />
 
       <main className="main-content">
+        {gamesError && (
+          <div className="api-error-banner">
+            <div className="api-error-banner-inner">
+              <div className="api-error-banner-text">
+                <strong>Failed to load data</strong>
+                <span>{gamesError.message}</span>
+              </div>
+              <button className="api-error-banner-retry" onClick={() => void retryLoadAll()}>
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
         {currentPage === "home" && (
           <HomePage
             games={filteredGames}
