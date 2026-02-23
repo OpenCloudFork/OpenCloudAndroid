@@ -11,7 +11,7 @@ import type {
 import { fetchSubscriptionWeb, fetchDynamicRegionsWeb } from "./subscription";
 import { preferencesGet, preferencesSet } from "./storage";
 import AuthWebView from "./authWebView";
-import { nativeFetch } from "./nativeHttp";
+import { httpGet, httpPost } from "../http";
 
 const SERVICE_URLS_ENDPOINT = "https://pcs.geforcenow.com/v1/serviceUrls";
 const TOKEN_ENDPOINT = "https://login.nvidia.com/token";
@@ -151,8 +151,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string): Promis
     code_verifier: verifier,
   });
 
-  const response = await nativeFetch(TOKEN_ENDPOINT, {
-    method: "POST",
+  const response = await httpPost(TOKEN_ENDPOINT, {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       Origin: "https://nvfile",
@@ -160,7 +159,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string): Promis
       Accept: "application/json, text/plain, */*",
       "User-Agent": GFN_USER_AGENT,
     },
-    body,
+    data: body,
   });
 
   if (!response.ok) {
@@ -187,15 +186,14 @@ async function refreshAuthTokens(refreshToken: string): Promise<AuthTokens> {
     scope: SCOPES,
   });
 
-  const response = await nativeFetch(TOKEN_ENDPOINT, {
-    method: "POST",
+  const response = await httpPost(TOKEN_ENDPOINT, {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       Origin: "https://nvfile",
       Accept: "application/json, text/plain, */*",
       "User-Agent": GFN_USER_AGENT,
     },
-    body,
+    data: body,
   });
 
   if (!response.ok) {
@@ -225,15 +223,14 @@ async function refreshViaClientToken(refreshToken: string): Promise<AuthTokens> 
     scope: SCOPES,
   });
 
-  const response = await nativeFetch(TOKEN_ENDPOINT, {
-    method: "POST",
+  const response = await httpPost(TOKEN_ENDPOINT, {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       Origin: "https://nvfile",
       Accept: "application/json, text/plain, */*",
       "User-Agent": GFN_USER_AGENT,
     },
-    body,
+    data: body,
   });
 
   if (!response.ok) {
@@ -272,7 +269,7 @@ async function fetchUserInfo(tokens: AuthTokens): Promise<AuthUser> {
     };
   }
 
-  const response = await nativeFetch(USERINFO_ENDPOINT, {
+  const response = await httpGet(USERINFO_ENDPOINT, {
     headers: {
       Authorization: `Bearer ${tokens.accessToken}`,
       Origin: "https://nvfile",
@@ -350,7 +347,7 @@ export class AndroidAuthService {
     if (this.providers.length > 0) return this.providers;
 
     try {
-      const response = await nativeFetch(SERVICE_URLS_ENDPOINT, {
+      const response = await httpGet(SERVICE_URLS_ENDPOINT, {
         headers: { Accept: "application/json", "User-Agent": GFN_USER_AGENT },
       });
 
@@ -415,7 +412,7 @@ export class AndroidAuthService {
     if (token) headers.Authorization = `GFNJWT ${token}`;
 
     try {
-      const response = await nativeFetch(`${base}v2/serverInfo`, { headers });
+      const response = await httpGet(`${base}v2/serverInfo`, { headers });
       if (!response.ok) return [];
 
       const payload = (await response.json()) as ServerInfoResponse;

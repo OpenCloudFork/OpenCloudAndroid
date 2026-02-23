@@ -1,5 +1,5 @@
 import type { SubscriptionInfo, EntitledResolution, StorageAddon, StreamRegion } from "@shared/gfn";
-import { nativeFetch } from "./nativeHttp";
+import { httpGet } from "../http";
 
 const MES_URL = "https://mes.geforcenow.com/v4/subscriptions";
 const LCARS_CLIENT_ID = "ec7e38d4-03af-4b58-b131-cfb0495903ab";
@@ -61,7 +61,7 @@ export async function fetchSubscriptionWeb(
   url.searchParams.append("vpcId", vpcId);
   url.searchParams.append("userId", userId);
 
-  const response = await nativeFetch(url.toString(), {
+  const response = await httpGet(url.toString(), {
     headers: {
       Authorization: `GFNJWT ${token}`,
       Accept: "application/json",
@@ -155,7 +155,7 @@ export async function fetchDynamicRegionsWeb(
   if (token) headers.Authorization = `GFNJWT ${token}`;
 
   try {
-    const response = await nativeFetch(url, { headers });
+    const response = await httpGet(url, { headers });
     if (!response.ok) return { regions: [], vpcId: null };
 
     const data = (await response.json()) as { requestStatus?: { serverId?: string }; metaData?: Array<{ key: string; value: string }> };

@@ -1,5 +1,6 @@
 package com.opencloud.android;
 
+import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -18,10 +19,10 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // Enable WebView debugging for debug builds.
+        // Enable WebView remote debugging when the APK is debuggable.
         // Connect via chrome://inspect on a desktop Chrome browser
         // while the device is connected via USB with USB debugging enabled.
-        if (BuildConfig.DEBUG) {
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
     }
