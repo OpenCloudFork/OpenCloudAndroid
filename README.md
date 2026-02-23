@@ -16,7 +16,8 @@ OpenCloudAndroid/
 │   └── platform/               # Platform abstraction layer
 │       ├── openNowPlatform.ts  # OpenNowApi implementation for Android
 │       └── gfn/                # Ported GFN backend modules
-│           ├── auth.ts         # OAuth PKCE (Capacitor Browser + deep links)
+│           ├── auth.ts         # OAuth PKCE via native WebView (localhost redirect)
+│           ├── authWebView.ts  # Capacitor plugin bridge for native auth WebView
 │           ├── cloudmatch.ts   # Session create/poll/stop/claim
 │           ├── signaling.ts    # Browser WebSocket signaling client
 │           ├── games.ts        # Games GraphQL API
@@ -35,7 +36,7 @@ OpenCloudAndroid/
 
 The desktop app uses Electron IPC (`window.openNow.*` via preload bridge). On Android, `platform/openNowPlatform.ts` implements the same `OpenNowApi` interface using:
 
-- **Auth**: OAuth PKCE flow via Capacitor Browser plugin + deep link callback (`com.opencloud.android://auth/callback`)
+- **Auth**: OAuth PKCE flow via native Android WebView plugin that intercepts the `http://localhost:2259` redirect (same redirect URI as desktop OpenNOW)
 - **Sessions**: Direct `fetch()` to NVIDIA CloudMatch API
 - **Signaling**: Browser-native `WebSocket` (replaces Node.js `ws` module)
 - **Storage**: Capacitor Preferences (replaces Electron `app.getPath` + fs)
@@ -126,12 +127,17 @@ GitHub Actions workflow (`.github/workflows/build.yml`) automatically:
 
 ## Authentication Flow (Android)
 
-1. User taps login → `Browser.open()` opens NVIDIA OAuth page
-2. User authenticates → redirected to `com.opencloud.android://auth/callback?code=...`
-3. Deep link intent received → `CapApp.addListener("appUrlOpen")` fires
-4. Auth code exchanged for tokens via PKCE flow
-5. Tokens stored in Capacitor Preferences
-6. Session restored on next launch via refresh token
+Android auth uses the same NVIDIA login flow as desktop OpenNOW — **not** a custom redirect URI scheme.
+
+1. User taps login → native `AuthWebViewPlugin` opens NVIDIA OAuth page in an Android WebView
+2. OAuth URL uses `redirect_uri=http://localhost:2259` (same as desktop)
+3. User authenticates on NVIDIA's login page
+4. WebView intercepts the `http://localhost:2259?code=...` redirect before it loads
+5. Auth code extracted and exchanged for tokens via PKCE flow
+6. Tokens stored in Capacitor Preferences
+7. Session restored on next launch via refresh token
+
+This avoids the `invalid_redirect_uri` error that occurs with custom URI schemes (`com.opencloud.android://...`) since only the `http://localhost:PORT` redirects are registered with NVIDIA's OAuth server.
 
 ## License
 

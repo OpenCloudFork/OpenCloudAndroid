@@ -10,6 +10,7 @@ import type {
 } from "@shared/gfn";
 import { fetchSubscriptionWeb, fetchDynamicRegionsWeb } from "./subscription";
 import { preferencesGet, preferencesSet } from "./storage";
+import AuthWebView from "./authWebView";
 
 const SERVICE_URLS_ENDPOINT = "https://pcs.geforcenow.com/v1/serviceUrls";
 const TOKEN_ENDPOINT = "https://login.nvidia.com/token";
@@ -23,7 +24,8 @@ const DEFAULT_IDP_ID = "PDiAhv2kJTFeQ7WOPqiQ2tRZ7lGhR2X11dXvM4TZSxg";
 const GFN_USER_AGENT =
   "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 OpenCloudAndroid/1.0.0";
 
-const REDIRECT_URI = "com.opencloud.android://auth/callback";
+const REDIRECT_PORT = 2259;
+const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}`;
 
 const AUTH_STATE_KEY = "auth_state";
 
@@ -416,7 +418,7 @@ export class AndroidAuthService {
     }
   }
 
-  async startLogin(input: AuthLoginRequest): Promise<string> {
+  async startLogin(input: AuthLoginRequest): Promise<AuthSession> {
     const providers = await this.getProviders();
     const selected =
       providers.find((p) => p.idpId === input.providerIdpId) ??
@@ -427,16 +429,19 @@ export class AndroidAuthService {
     this.selectedProvider = normalizeProvider(selected);
     this.pendingPkce = await generatePkce();
 
-    return buildAuthUrl(this.selectedProvider, this.pendingPkce.challenge);
-  }
+    const authUrl = buildAuthUrl(this.selectedProvider, this.pendingPkce.challenge);
 
-  async handleAuthCallback(url: string): Promise<AuthSession> {
-    if (!this.pendingPkce) throw new Error("No pending PKCE state");
+    const result = await AuthWebView.open({
+      url: authUrl,
+      redirectPattern: REDIRECT_URI,
+    });
 
-    const parsedUrl = new URL(url);
+    const callbackUrl = result.url;
+    const parsedUrl = new URL(callbackUrl);
     const code = parsedUrl.searchParams.get("code");
     if (!code) {
-      const error = parsedUrl.searchParams.get("error") || "No authorization code";
+      const error = parsedUrl.searchParams.get("error") || "No authorization code in callback";
+      this.pendingPkce = null;
       throw new Error(`Login failed: ${error}`);
     }
 
@@ -640,4 +645,3 @@ export class AndroidAuthService {
 }
 
 export const authService = new AndroidAuthService();
-export { REDIRECT_URI };

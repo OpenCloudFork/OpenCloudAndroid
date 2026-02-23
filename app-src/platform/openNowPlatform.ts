@@ -30,11 +30,10 @@ import type {
   ActiveSessionInfo,
 } from "@shared/gfn";
 
-import { Browser } from "@capacitor/browser";
 import { App as CapApp } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 
-import { authService, REDIRECT_URI } from "./gfn/auth";
+import { authService } from "./gfn/auth";
 import { fetchMainGamesWeb, fetchLibraryGamesWeb, fetchPublicGamesWeb, resolveLaunchAppIdWeb } from "./gfn/games";
 import { fetchSubscriptionWeb, fetchDynamicRegionsWeb } from "./gfn/subscription";
 import { createSessionWeb, pollSessionWeb, stopSessionWeb, getActiveSessionsWeb, claimSessionWeb } from "./gfn/cloudmatch";
@@ -75,22 +74,6 @@ async function ensureAuthInit(): Promise<void> {
   }
 }
 
-function setupDeepLinkListener(): void {
-  CapApp.addListener("appUrlOpen", async (event) => {
-    const url = event.url;
-    if (url.startsWith(REDIRECT_URI) || url.startsWith("com.opencloud.android://auth/")) {
-      try {
-        await authService.handleAuthCallback(url);
-        await Browser.close();
-      } catch (error) {
-        console.error("[Auth] Callback error:", error);
-      }
-    }
-  });
-}
-
-setupDeepLinkListener();
-
 export const openNowPlatform: OpenNowApi = {
   async getAuthSession(input: AuthSessionRequest = {}): Promise<AuthSessionResult> {
     await ensureAuthInit();
@@ -109,27 +92,7 @@ export const openNowPlatform: OpenNowApi = {
 
   async login(input: AuthLoginRequest): Promise<AuthSession> {
     await ensureAuthInit();
-    const url = await authService.startLogin(input);
-    await Browser.open({ url, presentationStyle: "fullscreen" });
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Login timed out"));
-      }, 120000);
-
-      const checkInterval = setInterval(async () => {
-        const session = authService.getSession();
-        if (session) {
-          cleanup();
-          resolve(session);
-        }
-      }, 500);
-
-      function cleanup() {
-        clearTimeout(timeout);
-        clearInterval(checkInterval);
-      }
-    });
+    return authService.startLogin(input);
   },
 
   async logout(): Promise<void> {
