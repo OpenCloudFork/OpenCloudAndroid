@@ -139,6 +139,57 @@ Android auth uses the same NVIDIA login flow as desktop OpenNOW — **not** a cu
 
 This avoids the `invalid_redirect_uri` error that occurs with custom URI schemes (`com.opencloud.android://...`) since only the `http://localhost:PORT` redirects are registered with NVIDIA's OAuth server.
 
+## Debugging on Android
+
+### Chrome DevTools (WebView)
+
+The app's WebView is debuggable in debug builds. Connect your device via USB and open:
+
+```
+chrome://inspect/#devices
+```
+
+You'll see the WebView listed under the app (`com.opencloud.android`). Click **inspect** to open DevTools with full Console, Network, and Sources access.
+
+### ADB Logcat
+
+View native + WebView logs:
+
+```bash
+# All logs from the app
+adb logcat -s "chromium" "Capacitor" "AuthWebView" "OpenCloud"
+
+# Filter to just the web console output
+adb logcat | grep -E "chromium|Console"
+```
+
+### Key Debug Commands
+
+```bash
+# Install debug APK
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+
+# Launch app
+adb shell am start -n com.opencloud.android/.MainActivity
+
+# Force stop
+adb shell am force-stop com.opencloud.android
+
+# Clear app data (resets auth + settings)
+adb shell pm clear com.opencloud.android
+```
+
+### Debug Logging in App
+
+Enable **Debug Logging** in Settings → Debug section. This enables verbose HTTP logging for all API calls. Use the **Copy Debug Logs** button to export the log buffer.
+
+### Common Debug Scenarios
+
+- **White screen**: Open chrome://inspect console — look for thrown exceptions
+- **Login fails**: Check console for `[Auth]` prefixed messages
+- **Game launch fails**: Look for `[CloudMatch]` and `[Http]` logs showing the failing endpoint and HTTP status
+- **Session not persisted**: Check `[Auth] Found persisted auth state` vs `[Auth] No persisted auth state found` on startup
+
 ## License
 
 See upstream OpenNOW project for license terms.
