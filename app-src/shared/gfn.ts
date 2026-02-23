@@ -115,6 +115,7 @@ export interface Settings {
   videoDecodeBackend: VideoDecodeBackend;
   sessionClockShowEveryMinutes: number;
   sessionClockShowDurationSeconds: number;
+  debugLogging: boolean;
 }
 
 export interface LoginProvider {

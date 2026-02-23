@@ -23,7 +23,7 @@ const SCOPES = "openid consent email tk_client age offline_access";
 const DEFAULT_IDP_ID = "PDiAhv2kJTFeQ7WOPqiQ2tRZ7lGhR2X11dXvM4TZSxg";
 
 const GFN_USER_AGENT =
-  "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 OpenCloudAndroid/1.0.0";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
 
 const REDIRECT_PORT = 2259;
 const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}`;
@@ -401,11 +401,11 @@ export class AndroidAuthService {
     const headers: Record<string, string> = {
       Accept: "application/json",
       "nv-client-id": "ec7e38d4-03af-4b58-b131-cfb0495903ab",
-      "nv-client-type": "BROWSER",
+      "nv-client-type": "NATIVE",
       "nv-client-version": "2.0.80.173",
-      "nv-client-streamer": "WEBRTC",
-      "nv-device-os": "ANDROID",
-      "nv-device-type": "SHIELD",
+      "nv-client-streamer": "NVIDIA-CLASSIC",
+      "nv-device-os": "WINDOWS",
+      "nv-device-type": "DESKTOP",
       "User-Agent": GFN_USER_AGENT,
     };
 

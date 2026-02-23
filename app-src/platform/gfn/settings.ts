@@ -39,6 +39,7 @@ export interface Settings {
   videoDecodeBackend: VideoDecodeBackend;
   sessionClockShowEveryMinutes: number;
   sessionClockShowDurationSeconds: number;
+  debugLogging: boolean;
 }
 
 const SETTINGS_KEY = "app_settings";
@@ -77,6 +78,7 @@ export const DEFAULT_SETTINGS: Settings = {
   videoDecodeBackend: "auto",
   sessionClockShowEveryMinutes: 60,
   sessionClockShowDurationSeconds: 30,
+  debugLogging: false,
 };
 
 let cachedSettings: Settings | null = null;

@@ -1,4 +1,5 @@
 import { CapacitorHttp, type HttpOptions, type HttpResponse as CapHttpResponse } from "@capacitor/core";
+import { debugLog, debugWarn, debugError, isDebugLogging } from "./debugLog";
 
 const TAG = "[Http]";
 
@@ -36,12 +37,10 @@ export interface HttpRequestOptions {
   data?: unknown;
 }
 
-function logAuth(headers: Record<string, string>): void {
-  const val = headers["Authorization"] ?? headers["authorization"];
-  if (val) {
-    const preview = val.length > 40 ? `${val.slice(0, 40)}…` : val;
-    console.log(`${TAG} Auth header: ${preview}`);
-  }
+function redactAuth(headers: Record<string, string>): string {
+  const auth = headers["Authorization"] ?? headers["authorization"];
+  if (!auth) return "";
+  return auth.length > 30 ? `${auth.slice(0, 30)}…[${auth.length}]` : auth;
 }
 
 function serializeBody(
@@ -69,7 +68,6 @@ export async function httpRequest(
 ): Promise<HttpResponse> {
   const upperMethod = method.toUpperCase();
   const headers: Record<string, string> = { ...(options.headers ?? {}) };
-  logAuth(headers);
 
   const body = serializeBody(options.data, headers);
 
@@ -86,7 +84,17 @@ export async function httpRequest(
     data: body,
   };
 
-  console.log(`${TAG} → ${upperMethod} ${finalUrl}`);
+  const authStr = redactAuth(headers);
+  debugLog(TAG, `→ ${upperMethod} ${finalUrl}${authStr ? ` [auth=${authStr}]` : ""}`);
+
+  if (isDebugLogging()) {
+    const safeHeaders = { ...headers };
+    if (safeHeaders["Authorization"]) safeHeaders["Authorization"] = redactAuth(headers);
+    if (safeHeaders["authorization"]) safeHeaders["authorization"] = redactAuth(headers);
+    debugLog(TAG, `  headers: ${JSON.stringify(safeHeaders)}`);
+    if (body) debugLog(TAG, `  body: ${body.slice(0, 300)}`);
+  }
+
   const t0 = performance.now();
 
   try {
@@ -97,24 +105,18 @@ export async function httpRequest(
     if (!resp.ok) {
       const preview =
         typeof raw.data === "string"
-          ? raw.data.slice(0, 200)
-          : JSON.stringify(raw.data ?? "").slice(0, 200);
-      console.warn(
-        `${TAG} ✗ ${upperMethod} ${finalUrl} → ${raw.status} (${elapsed}ms) | ${preview}`,
-      );
+          ? raw.data.slice(0, 300)
+          : JSON.stringify(raw.data ?? "").slice(0, 300);
+      debugWarn(TAG, `${upperMethod} ${finalUrl} → ${raw.status} (${elapsed}ms) | ${preview}`);
     } else {
-      console.log(
-        `${TAG} ✓ ${upperMethod} ${finalUrl} → ${raw.status} (${elapsed}ms)`,
-      );
+      debugLog(TAG, `✓ ${upperMethod} ${finalUrl} → ${raw.status} (${elapsed}ms)`);
     }
 
     return resp;
   } catch (error: unknown) {
     const elapsed = Math.round(performance.now() - t0);
     const msg = error instanceof Error ? error.message : String(error);
-    console.error(
-      `${TAG} ✗✗ ${upperMethod} ${finalUrl} threw after ${elapsed}ms: ${msg}`,
-    );
+    debugError(TAG, `${upperMethod} ${finalUrl} threw after ${elapsed}ms: ${msg}`);
     throw new Error(`HTTP ${upperMethod} ${finalUrl} failed: ${msg}`);
   }
 }

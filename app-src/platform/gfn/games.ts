@@ -1,5 +1,6 @@
 import type { GameInfo, GameVariant } from "@shared/gfn";
 import { httpGet } from "../http";
+import { debugLog, debugWarn } from "../debugLog";
 
 const GRAPHQL_URL = "https://games.geforce.com/graphql";
 const PANELS_QUERY_HASH = "f8e26265a5db5c20e1334a6872cf04b6e3970507697f6ae55a6ddefa5420daf0";
@@ -8,7 +9,9 @@ const DEFAULT_LOCALE = "en_US";
 const LCARS_CLIENT_ID = "ec7e38d4-03af-4b58-b131-cfb0495903ab";
 const GFN_CLIENT_VERSION = "2.0.80.173";
 const GFN_USER_AGENT =
-  "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 OpenCloudAndroid/1.0.0";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
+
+const TAG = "[Games]";
 
 interface GraphQlResponse {
   data?: { panels: Array<{ name: string; sections: Array<{ items: Array<{ __typename: string; app?: AppData }> }> }> };
@@ -23,6 +26,25 @@ interface AppData {
   images?: { GAME_BOX_ART?: string; TV_BANNER?: string; HERO_IMAGE?: string };
   variants?: Array<{ id: string; appStore: string; supportedControls?: string[]; gfn?: { library?: { selected?: boolean } } }>;
   gfn?: { playType?: string; minimumMembershipTierLabel?: string };
+}
+
+function gfnHeaders(token: string): Record<string, string> {
+  return {
+    Accept: "application/json, text/plain, */*",
+    Origin: "https://play.geforcenow.com",
+    Referer: "https://play.geforcenow.com/",
+    Authorization: `GFNJWT ${token}`,
+    "nv-client-id": LCARS_CLIENT_ID,
+    "nv-client-type": "NATIVE",
+    "nv-client-version": GFN_CLIENT_VERSION,
+    "nv-client-streamer": "NVIDIA-CLASSIC",
+    "nv-device-os": "WINDOWS",
+    "nv-device-type": "DESKTOP",
+    "nv-device-make": "UNKNOWN",
+    "nv-device-model": "UNKNOWN",
+    "nv-browser-type": "CHROME",
+    "User-Agent": GFN_USER_AGENT,
+  };
 }
 
 function optimizeImage(url: string): string {
@@ -41,9 +63,14 @@ async function getVpcId(token: string, providerStreamingBaseUrl?: string): Promi
   try {
     const response = await httpGet(`${normalizedBase}v2/serverInfo`, {
       headers: {
-        Accept: "application/json", Authorization: `GFNJWT ${token}`,
-        "nv-client-id": LCARS_CLIENT_ID, "nv-client-type": "NATIVE", "nv-client-version": GFN_CLIENT_VERSION,
-        "nv-client-streamer": "NVIDIA-CLASSIC", "nv-device-os": "ANDROID", "nv-device-type": "SHIELD",
+        Accept: "application/json",
+        Authorization: `GFNJWT ${token}`,
+        "nv-client-id": LCARS_CLIENT_ID,
+        "nv-client-type": "NATIVE",
+        "nv-client-version": GFN_CLIENT_VERSION,
+        "nv-client-streamer": "NVIDIA-CLASSIC",
+        "nv-device-os": "WINDOWS",
+        "nv-device-type": "DESKTOP",
         "User-Agent": GFN_USER_AGENT,
       },
     });
@@ -77,16 +104,18 @@ async function fetchPanels(token: string, panelNames: string[], vpcId: string): 
   const extensions = JSON.stringify({ persistedQuery: { sha256Hash: PANELS_QUERY_HASH } });
   const requestType = panelNames.includes("LIBRARY") ? "panels/Library" : "panels/MainV2";
   const params = new URLSearchParams({ requestType, extensions, huId: randomHuId(), variables });
-  const response = await httpGet(`${GRAPHQL_URL}?${params.toString()}`, {
-    headers: {
-      Accept: "application/json, text/plain, */*", "Content-Type": "application/graphql",
-      Origin: "https://play.geforcenow.com", Referer: "https://play.geforcenow.com/",
-      Authorization: `GFNJWT ${token}`, "nv-client-id": LCARS_CLIENT_ID, "nv-client-type": "NATIVE",
-      "nv-client-version": GFN_CLIENT_VERSION, "nv-client-streamer": "NVIDIA-CLASSIC",
-      "nv-device-os": "ANDROID", "nv-device-type": "SHIELD", "User-Agent": GFN_USER_AGENT,
-    },
-  });
-  if (!response.ok) throw new Error(`Games GraphQL failed (${response.status})`);
+  const url = `${GRAPHQL_URL}?${params.toString()}`;
+
+  debugLog(TAG, `fetchPanels(${panelNames.join(",")}) vpcId=${vpcId}`);
+
+  const response = await httpGet(url, { headers: gfnHeaders(token) });
+
+  if (!response.ok) {
+    const body = await response.text();
+    debugWarn(TAG, `GraphQL ${response.status} for panels=${panelNames.join(",")}: ${body.slice(0, 500)}`);
+    throw new Error(`Games GraphQL failed (${response.status}): ${body.slice(0, 200)}`);
+  }
+
   return (await response.json()) as GraphQlResponse;
 }
 
@@ -97,6 +126,7 @@ function flattenPanels(payload: GraphQlResponse): GameInfo[] {
     for (const section of panel.sections ?? [])
       for (const item of section.items ?? [])
         if (item.__typename === "GameItem" && item.app) games.push(appToGame(item.app));
+  debugLog(TAG, `flattenPanels → ${games.length} games`);
   return games;
 }
 
@@ -135,14 +165,7 @@ export async function resolveLaunchAppIdWeb(
   const extensions = JSON.stringify({ persistedQuery: { sha256Hash: APP_METADATA_QUERY_HASH } });
   const params = new URLSearchParams({ requestType: "appMetaData", extensions, huId: randomHuId(), variables });
   try {
-    const response = await httpGet(`${GRAPHQL_URL}?${params.toString()}`, {
-      headers: {
-        Accept: "application/json, text/plain, */*", "Content-Type": "application/graphql",
-        Origin: "https://play.geforcenow.com", Referer: "https://play.geforcenow.com/",
-        Authorization: `GFNJWT ${token}`, "nv-client-id": LCARS_CLIENT_ID, "nv-client-type": "NATIVE",
-        "nv-client-version": GFN_CLIENT_VERSION, "User-Agent": GFN_USER_AGENT,
-      },
-    });
+    const response = await httpGet(`${GRAPHQL_URL}?${params.toString()}`, { headers: gfnHeaders(token) });
     if (!response.ok) return null;
     const payload = (await response.json()) as AppMetaDataResponse;
     const app = payload.data?.apps?.items?.[0];

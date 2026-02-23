@@ -1,4 +1,4 @@
-import { Monitor, Volume2, Mouse, Settings2, Globe, Save, Check, Search, X, Loader, Cpu, Zap, MessageSquare, Joystick, Sun, RefreshCw, RotateCcw, Mic, MicOff } from "lucide-react";
+import { Monitor, Volume2, Mouse, Settings2, Globe, Save, Check, Search, X, Loader, Cpu, Zap, MessageSquare, Joystick, Sun, RefreshCw, RotateCcw, Mic, MicOff, Bug, Copy } from "lucide-react";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { JSX } from "react";
 
@@ -1799,6 +1799,54 @@ export function SettingsPage({ settings, regions, onSettingChange, hdrCapability
               settings={settings}
               onSettingChange={handleChange}
             />
+          </div>
+        </section>
+
+        {/* ── Debug ──────────────────────────────────────── */}
+        <section className="settings-section">
+          <div className="settings-section-header">
+            <Bug size={18} />
+            <h2>Debug</h2>
+          </div>
+          <div className="settings-rows">
+            <div className="settings-row">
+              <label className="settings-label">Enable debug logging</label>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings.debugLogging}
+                  onChange={(e) => handleChange("debugLogging", e.target.checked)}
+                />
+                <span className="settings-toggle-track" />
+              </label>
+            </div>
+            <div className="settings-row">
+              <label className="settings-label">Copy debug info to clipboard</label>
+              <button
+                className="settings-btn-inline"
+                onClick={async () => {
+                  try {
+                    const mod = await import("@platform/debugLog");
+                    const text = mod.getDebugText(200);
+                    if (text.length === 0) {
+                      showToast("No debug lines yet", "info");
+                      return;
+                    }
+                    await navigator.clipboard.writeText(text);
+                    showToast(`Copied ${mod.getDebugLines(200).length} lines`, "success");
+                  } catch (err) {
+                    showToast("Copy failed: " + String(err), "error");
+                  }
+                }}
+              >
+                <Copy size={14} />
+                Copy Debug Info
+              </button>
+            </div>
+            <span className="settings-subtle-hint">
+              When enabled, verbose HTTP request/response details are logged to the console.
+              Use chrome://inspect to view logs on a connected device.
+            </span>
           </div>
         </section>
       </div>

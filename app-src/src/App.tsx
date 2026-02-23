@@ -318,6 +318,7 @@ export function App(): JSX.Element {
     videoDecodeBackend: "auto",
     sessionClockShowEveryMinutes: 60,
     sessionClockShowDurationSeconds: 30,
+    debugLogging: false,
   });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [regions, setRegions] = useState<StreamRegion[]>([]);

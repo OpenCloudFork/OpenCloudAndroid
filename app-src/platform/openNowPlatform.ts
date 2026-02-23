@@ -40,6 +40,7 @@ import { createSessionWeb, pollSessionWeb, stopSessionWeb, getActiveSessionsWeb,
 import { BrowserSignalingClient } from "./gfn/signaling";
 import { loadSettings, setSetting as setSettingStore, resetSettings as resetSettingsStore, DEFAULT_SETTINGS } from "./gfn/settings";
 import type { Settings as SettingsType } from "./gfn/settings";
+import { setDebugLogging } from "./debugLog";
 
 let signalingClient: BrowserSignalingClient | null = null;
 let signalingClientKey: string | null = null;
@@ -232,11 +233,14 @@ export const openNowPlatform: OpenNowApi = {
   },
 
   async getSettings(): Promise<Settings> {
-    return loadSettings() as Promise<Settings>;
+    const s = await loadSettings() as Settings;
+    setDebugLogging(s.debugLogging ?? false);
+    return s;
   },
 
   async setSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
     await setSettingStore(key as keyof SettingsType, value as SettingsType[keyof SettingsType]);
+    if (key === "debugLogging") setDebugLogging(value as boolean);
   },
 
   async resetSettings(): Promise<Settings> {

@@ -14,7 +14,7 @@ import { SessionError } from "./errorCodes";
 import { httpGet, httpRequest } from "../http";
 
 const GFN_USER_AGENT =
-  "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 OpenCloudAndroid/1.0.0";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
 const GFN_CLIENT_VERSION = "2.0.80.173";
 
 function normalizeIceServers(response: CloudMatchResponse): IceServer[] {
@@ -106,23 +106,28 @@ function buildSessionRequest(appId: string, internalTitle: string, settings: Str
   return {
     sessionRequestData: {
       appId, internalTitle: internalTitle || null,
-      availableSupportedControllers: [1, 2, 4, 8, 16, 32, 64],
+      availableSupportedControllers: [],
       networkTestSessionId: null, parentSessionId: null,
-      clientIdentification: "OpenCloudAndroid", deviceHashId: randomDeviceHash(),
-      clientVersion: GFN_CLIENT_VERSION, sdkVersion: GFN_CLIENT_VERSION, streamerVersion: 7,
-      clientPlatformName: "ANDROID",
+      clientIdentification: "GFN-PC", deviceHashId: randomDeviceHash(),
+      clientVersion: "30.0", sdkVersion: "1.0", streamerVersion: 1,
+      clientPlatformName: "windows",
       clientRequestMonitorSettings: [{
         widthInPixels: width, heightInPixels: height, framesPerSecond: settings.fps,
         sdrHdrMode: bitDepth >= 10 ? 1 : 0,
         displayData: { desiredContentMaxLuminance: 1000, desiredContentMinLuminance: 0, desiredContentMaxFrameAverageLuminance: 500 },
         dpi: 96,
       }],
-      useOps: true, audioMode: 0, metaData: [],
+      useOps: true, audioMode: 2,
+      metaData: [
+        { key: "wssignaling", value: "1" },
+        { key: "GSStreamerType", value: "WebRTC" },
+        { key: "networkType", value: "Unknown" },
+      ],
       sdrHdrMode: bitDepth >= 10 ? 1 : 0,
       clientDisplayHdrCapabilities: null,
       surroundAudioInfo: 0, remoteControllersBitmap: 6,
       clientTimezoneOffset: new Date().getTimezoneOffset(),
-      enhancedStreamMode: 0, appLaunchMode: 0,
+      enhancedStreamMode: 1, appLaunchMode: 1,
       secureRTSPSupported: false, partnerCustomData: "",
       accountLinked, enablePersistingInGameSettings: true, userAge: 99,
       requestedStreamingFeatures: {
@@ -141,8 +146,8 @@ function commonHeaders(token: string, zone: string): Record<string, string> {
     Accept: "application/json", "Content-Type": "application/json",
     Authorization: `GFNJWT ${token}`,
     "nv-client-id": "ec7e38d4-03af-4b58-b131-cfb0495903ab",
-    "nv-client-type": "BROWSER", "nv-client-version": GFN_CLIENT_VERSION,
-    "nv-client-streamer": "WEBRTC", "nv-device-os": "ANDROID", "nv-device-type": "SHIELD",
+    "nv-client-type": "NATIVE", "nv-client-version": GFN_CLIENT_VERSION,
+    "nv-client-streamer": "NVIDIA-CLASSIC", "nv-device-os": "WINDOWS", "nv-device-type": "DESKTOP",
     "User-Agent": GFN_USER_AGENT,
   };
 }

@@ -4,6 +4,8 @@ import { httpGet } from "../http";
 const MES_URL = "https://mes.geforcenow.com/v4/subscriptions";
 const LCARS_CLIENT_ID = "ec7e38d4-03af-4b58-b131-cfb0495903ab";
 const GFN_CLIENT_VERSION = "2.0.80.173";
+const GFN_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
 
 interface SubscriptionResponse {
   firstEntitlementStartDateTime?: string;
@@ -69,8 +71,9 @@ export async function fetchSubscriptionWeb(
       "nv-client-type": "NATIVE",
       "nv-client-version": GFN_CLIENT_VERSION,
       "nv-client-streamer": "NVIDIA-CLASSIC",
-      "nv-device-os": "ANDROID",
-      "nv-device-type": "SHIELD",
+      "nv-device-os": "WINDOWS",
+      "nv-device-type": "DESKTOP",
+      "User-Agent": GFN_USER_AGENT,
     },
   });
 
@@ -146,11 +149,12 @@ export async function fetchDynamicRegionsWeb(
   const headers: Record<string, string> = {
     Accept: "application/json",
     "nv-client-id": LCARS_CLIENT_ID,
-    "nv-client-type": "BROWSER",
+    "nv-client-type": "NATIVE",
     "nv-client-version": GFN_CLIENT_VERSION,
-    "nv-client-streamer": "WEBRTC",
-    "nv-device-os": "ANDROID",
-    "nv-device-type": "SHIELD",
+    "nv-client-streamer": "NVIDIA-CLASSIC",
+    "nv-device-os": "WINDOWS",
+    "nv-device-type": "DESKTOP",
+    "User-Agent": GFN_USER_AGENT,
   };
   if (token) headers.Authorization = `GFNJWT ${token}`;
 

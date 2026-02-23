@@ -1575,6 +1575,14 @@ body,
 .settings-save-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
 .settings-save-btn:active { transform: translateY(0); }
 
+.settings-btn-inline {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 6px; border: 1px solid var(--panel-border-solid);
+  background: var(--chip); color: var(--ink-soft); font-size: 0.85rem; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.settings-btn-inline:hover { background: var(--card-hover); color: var(--ink); }
+
 /* Microphone UI */
 .mic-mode-seg {
   margin-top: 6px;
