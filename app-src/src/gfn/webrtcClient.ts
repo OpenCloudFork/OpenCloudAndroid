@@ -855,6 +855,27 @@ export class GfnWebRtcClient {
       window.clearInterval(this.gamepadPollTimer);
       this.gamepadPollTimer = null;
     }
+    if (this.escapeHoldReleaseTimer !== null) {
+      window.clearTimeout(this.escapeHoldReleaseTimer);
+      this.escapeHoldReleaseTimer = null;
+    }
+    if (this.escapeHoldIndicatorDelayTimer !== null) {
+      window.clearTimeout(this.escapeHoldIndicatorDelayTimer);
+      this.escapeHoldIndicatorDelayTimer = null;
+    }
+    if (this.escapeHoldProgressTimer !== null) {
+      window.clearInterval(this.escapeHoldProgressTimer);
+      this.escapeHoldProgressTimer = null;
+    }
+    if (this.pointerLockEscapeTimer !== null) {
+      window.clearTimeout(this.pointerLockEscapeTimer);
+      this.pointerLockEscapeTimer = null;
+    }
+    if (this.escapeAutoKeyUpTimer !== null) {
+      window.clearTimeout(this.escapeAutoKeyUpTimer);
+      this.escapeAutoKeyUpTimer = null;
+    }
+    this.escapeHoldStartedAtMs = null;
   }
 
   private setupStatsPolling(): void {

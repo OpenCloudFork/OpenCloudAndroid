@@ -714,16 +714,20 @@ export function App(): JSX.Element {
       setSessionClockVisible(false);
     }, durationSeconds * 1000);
 
+    let pendingHideTimer: number | null = null;
     const revealInterval = window.setInterval(() => {
       setSessionClockVisible(true);
-      window.setTimeout(() => {
+      if (pendingHideTimer !== null) window.clearTimeout(pendingHideTimer);
+      pendingHideTimer = window.setTimeout(() => {
         setSessionClockVisible(false);
+        pendingHideTimer = null;
       }, durationSeconds * 1000);
     }, everyMinutes * 60 * 1000);
 
     return () => {
       window.clearTimeout(hideTimer);
       window.clearInterval(revealInterval);
+      if (pendingHideTimer !== null) window.clearTimeout(pendingHideTimer);
     };
   }, [streamStatus, sessionStartedAtMs, settings.sessionClockShowEveryMinutes, settings.sessionClockShowDurationSeconds]);
 
