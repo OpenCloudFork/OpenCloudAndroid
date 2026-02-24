@@ -103,6 +103,80 @@ function formatWarningSeconds(value: number | undefined): string | null {
   return `${seconds}s`;
 }
 
+function areStreamViewPropsEqual(prev: StreamViewProps, next: StreamViewProps): boolean {
+  if (
+    prev.showStats !== next.showStats ||
+    prev.connectedControllers !== next.connectedControllers ||
+    prev.antiAfkEnabled !== next.antiAfkEnabled ||
+    prev.sessionElapsedSeconds !== next.sessionElapsedSeconds ||
+    prev.sessionClockVisible !== next.sessionClockVisible ||
+    prev.isConnecting !== next.isConnecting ||
+    prev.gameTitle !== next.gameTitle ||
+    prev.micStatus !== next.micStatus ||
+    prev.serverRegion !== next.serverRegion ||
+    prev.videoRef !== next.videoRef ||
+    prev.audioRef !== next.audioRef ||
+    prev.onToggleFullscreen !== next.onToggleFullscreen ||
+    prev.onConfirmExit !== next.onConfirmExit ||
+    prev.onCancelExit !== next.onCancelExit ||
+    prev.onEndSession !== next.onEndSession
+  ) return false;
+  if (
+    prev.escHoldReleaseIndicator.visible !== next.escHoldReleaseIndicator.visible ||
+    prev.escHoldReleaseIndicator.progress !== next.escHoldReleaseIndicator.progress
+  ) return false;
+  if (
+    prev.exitPrompt.open !== next.exitPrompt.open ||
+    prev.exitPrompt.gameTitle !== next.exitPrompt.gameTitle
+  ) return false;
+  if (prev.streamWarning !== next.streamWarning) {
+    if (!prev.streamWarning || !next.streamWarning) return false;
+    if (
+      prev.streamWarning.code !== next.streamWarning.code ||
+      prev.streamWarning.message !== next.streamWarning.message ||
+      prev.streamWarning.tone !== next.streamWarning.tone ||
+      prev.streamWarning.secondsLeft !== next.streamWarning.secondsLeft
+    ) return false;
+  }
+  if (
+    prev.shortcuts.toggleStats !== next.shortcuts.toggleStats ||
+    prev.shortcuts.togglePointerLock !== next.shortcuts.togglePointerLock ||
+    prev.shortcuts.stopStream !== next.shortcuts.stopStream
+  ) return false;
+  const ps = prev.stats;
+  const ns = next.stats;
+  if (
+    ps.connectionState !== ns.connectionState ||
+    ps.inputReady !== ns.inputReady ||
+    ps.resolution !== ns.resolution ||
+    ps.codec !== ns.codec ||
+    ps.isHdr !== ns.isHdr ||
+    ps.bitrateKbps !== ns.bitrateKbps ||
+    ps.decodeFps !== ns.decodeFps ||
+    ps.renderFps !== ns.renderFps ||
+    ps.packetLossPercent !== ns.packetLossPercent ||
+    ps.rttMs !== ns.rttMs ||
+    ps.decodeTimeMs !== ns.decodeTimeMs ||
+    ps.renderTimeMs !== ns.renderTimeMs ||
+    ps.jitterBufferDelayMs !== ns.jitterBufferDelayMs ||
+    ps.inputQueueBufferedBytes !== ns.inputQueueBufferedBytes ||
+    ps.inputQueuePeakBufferedBytes !== ns.inputQueuePeakBufferedBytes ||
+    ps.inputQueueDropCount !== ns.inputQueueDropCount ||
+    ps.inputQueueMaxSchedulingDelayMs !== ns.inputQueueMaxSchedulingDelayMs ||
+    ps.gpuType !== ns.gpuType ||
+    ps.serverRegion !== ns.serverRegion ||
+    ps.connectedGamepads !== ns.connectedGamepads ||
+    ps.hdrState.status !== ns.hdrState.status ||
+    ps.hdrState.bitDepth !== ns.hdrState.bitDepth ||
+    ps.hdrState.colorPrimaries !== ns.hdrState.colorPrimaries ||
+    ps.hdrState.transferFunction !== ns.hdrState.transferFunction ||
+    ps.hdrState.codecProfile !== ns.hdrState.codecProfile ||
+    ps.hdrState.overlayForcesSdr !== ns.hdrState.overlayForcesSdr ||
+    ps.hdrState.fallbackReason !== ns.hdrState.fallbackReason
+  ) return false;
+  return true;
+}
+
 export const StreamView = memo(function StreamView({
   videoRef,
   audioRef,
@@ -388,4 +462,4 @@ export const StreamView = memo(function StreamView({
       )}
     </div>
   );
-});
+}, areStreamViewPropsEqual);
