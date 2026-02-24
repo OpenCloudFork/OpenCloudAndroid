@@ -184,6 +184,11 @@ export const openNowPlatform: OpenNowApi = {
     await signalingClient.connect();
     isStreaming = true;
     StatusBar.hide().catch(() => {});
+    document.documentElement.requestFullscreen?.().then(() => {
+      screen.orientation?.lock?.("landscape").catch(() => {});
+    }).catch(() => {
+      screen.orientation?.lock?.("landscape").catch(() => {});
+    });
   },
 
   async disconnectSignaling(): Promise<void> {
@@ -192,6 +197,10 @@ export const openNowPlatform: OpenNowApi = {
     signalingClientKey = null;
     isStreaming = false;
     StatusBar.show().catch(() => {});
+    screen.orientation?.unlock?.();
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
   },
 
   async sendAnswer(input: SendAnswerRequest): Promise<void> {

@@ -2635,6 +2635,86 @@ body,
 
 
 /* ======================================================
+   LANDSCAPE STREAMING
+   ====================================================== */
+@media (orientation: landscape) and (max-height: 500px) {
+  .sv-stats {
+    top: 8px; right: 8px;
+    padding: 6px 8px;
+    font-size: 0.64rem;
+    min-width: 200px;
+    max-width: 280px;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+  }
+  .sv-ctrl {
+    top: 8px; left: 8px;
+    padding: 5px 8px;
+  }
+  .sv-afk {
+    top: 8px; left: 8px;
+  }
+  .sv-afk--stacked {
+    top: 44px;
+  }
+  .sv-fs {
+    bottom: 10px; right: 10px;
+    width: 34px; height: 34px;
+  }
+  .sv-end {
+    bottom: 10px; right: 52px;
+    width: 34px; height: 34px;
+  }
+  .sv-hints {
+    bottom: 10px; left: 10px;
+    padding: 6px 8px;
+  }
+  .sv-session-clock {
+    top: 8px;
+    padding: 5px 10px;
+    font-size: 0.68rem;
+  }
+  .sv-time-warning {
+    top: 38px;
+    padding: 6px 10px;
+    font-size: 0.66rem;
+  }
+  .sv-mic {
+    bottom: 10px; right: 94px;
+    height: 34px;
+    padding: 0 8px;
+    font-size: 0.66rem;
+  }
+  .sv-title-bar {
+    bottom: 52px;
+    padding: 5px 14px;
+    font-size: 0.78rem;
+  }
+  .ti-kb-btn {
+    bottom: 10px;
+    right: 10px;
+  }
+  .sv-exit {
+    padding: 14px;
+  }
+  .sv-exit-card {
+    padding: 14px 14px 12px;
+    max-height: calc(100dvh - 28px);
+    overflow-y: auto;
+  }
+  .sv-exit-title {
+    font-size: 1.1rem;
+  }
+  .sv-exit-actions {
+    margin-top: 10px;
+  }
+  .sv-esc-hold {
+    top: 15%;
+  }
+}
+
+
+/* ======================================================
    REDUCED MOTION
    ====================================================== */
 @media (prefers-reduced-motion: reduce) {
