@@ -339,6 +339,9 @@ export function App(): JSX.Element {
   const statsThrottleRef = useRef<number>(0);
   const [showStatsOverlay, setShowStatsOverlay] = useState(true);
   const [touchControlsVisible, setTouchControlsVisible] = useState(true);
+  const handleToggleTouchControls = useCallback(() => {
+    setTouchControlsVisible((v) => !v);
+  }, []);
   const [antiAfkEnabled, setAntiAfkEnabled] = useState(false);
   const [escHoldReleaseIndicator, setEscHoldReleaseIndicator] = useState<{ visible: boolean; progress: number }>({
     visible: false,
@@ -1746,7 +1749,7 @@ export function App(): JSX.Element {
             <TouchControls
               client={clientRef.current}
               visible={touchControlsVisible}
-              onToggle={() => setTouchControlsVisible((v) => !v)}
+              onToggle={handleToggleTouchControls}
               mouseSensitivity={settings.mouseSensitivity}
             />
           )}
