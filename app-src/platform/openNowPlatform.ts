@@ -185,9 +185,9 @@ export const openNowPlatform: OpenNowApi = {
     isStreaming = true;
     StatusBar.hide().catch(() => {});
     document.documentElement.requestFullscreen?.().then(() => {
-      screen.orientation?.lock?.("landscape").catch(() => {});
+      (screen.orientation as any)?.lock?.("landscape").catch(() => {});
     }).catch(() => {
-      screen.orientation?.lock?.("landscape").catch(() => {});
+      (screen.orientation as any)?.lock?.("landscape").catch(() => {});
     });
   },
 

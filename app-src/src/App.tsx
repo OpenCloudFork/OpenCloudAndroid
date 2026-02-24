@@ -670,14 +670,6 @@ export function App(): JSX.Element {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const handler = () => {
-      void handlePromptedStopStream();
-    };
-    window.addEventListener("opencloud:stop-stream", handler);
-    return () => window.removeEventListener("opencloud:stop-stream", handler);
-  }, [handlePromptedStopStream]);
-
   // Anti-AFK interval
   useEffect(() => {
     if (!antiAfkEnabled || streamStatus !== "streaming") return;
@@ -1436,6 +1428,14 @@ export function App(): JSX.Element {
 
     await handleStopStream();
   }, [handleStopStream, releasePointerLockIfNeeded, requestExitPrompt, streamStatus, streamingGame?.title]);
+
+  useEffect(() => {
+    const handler = () => {
+      void handlePromptedStopStream();
+    };
+    window.addEventListener("opencloud:stop-stream", handler);
+    return () => window.removeEventListener("opencloud:stop-stream", handler);
+  }, [handlePromptedStopStream]);
 
   // Keyboard shortcuts
   useEffect(() => {
