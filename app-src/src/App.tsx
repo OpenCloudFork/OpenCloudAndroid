@@ -1677,22 +1677,6 @@ export function App(): JSX.Element {
     return null;
   }, [gameTitleByAppId, navbarActiveSession, session?.sessionId, streamingGame?.title]);
 
-  // Show login screen if not authenticated
-  if (!authSession) {
-    return (
-      <LoginScreen
-        providers={providers}
-        selectedProviderId={providerIdpId}
-        onProviderChange={setProviderIdpId}
-        onLogin={handleLogin}
-        isLoading={isLoggingIn}
-        error={sessionExpiredMessage ?? loginError}
-        isInitializing={isInitializing}
-        statusMessage={startupStatusMessage}
-      />
-    );
-  }
-
   const handleToggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
@@ -1710,6 +1694,22 @@ export function App(): JSX.Element {
     togglePointerLock: formatShortcutForDisplay(settings.shortcutTogglePointerLock, isMac),
     stopStream: formatShortcutForDisplay(settings.shortcutStopStream, isMac),
   }), [settings.shortcutToggleStats, settings.shortcutTogglePointerLock, settings.shortcutStopStream]);
+
+  // Show login screen if not authenticated
+  if (!authSession) {
+    return (
+      <LoginScreen
+        providers={providers}
+        selectedProviderId={providerIdpId}
+        onProviderChange={setProviderIdpId}
+        onLogin={handleLogin}
+        isLoading={isLoggingIn}
+        error={sessionExpiredMessage ?? loginError}
+        isInitializing={isInitializing}
+        statusMessage={startupStatusMessage}
+      />
+    );
+  }
 
   const showLaunchOverlay = streamStatus !== "idle" || launchError !== null;
 
