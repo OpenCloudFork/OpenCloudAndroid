@@ -38,6 +38,7 @@ import { LibraryPage } from "./components/LibraryPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { StreamLoading } from "./components/StreamLoading";
 import { StreamView } from "./components/StreamView";
+import { TouchControls } from "./components/TouchControls";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 
@@ -335,6 +336,7 @@ export function App(): JSX.Element {
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("idle");
   const [diagnostics, setDiagnostics] = useState<StreamDiagnostics>(defaultDiagnostics());
   const [showStatsOverlay, setShowStatsOverlay] = useState(true);
+  const [touchControlsVisible, setTouchControlsVisible] = useState(true);
   const [antiAfkEnabled, setAntiAfkEnabled] = useState(false);
   const [escHoldReleaseIndicator, setEscHoldReleaseIndicator] = useState<{ visible: boolean; progress: number }>({
     visible: false,
@@ -1686,6 +1688,7 @@ export function App(): JSX.Element {
     return (
       <>
         {streamStatus !== "idle" && (
+          <>
           <StreamView
             videoRef={videoRef}
             audioRef={audioRef}
@@ -1720,6 +1723,15 @@ export function App(): JSX.Element {
               void handlePromptedStopStream();
             }}
           />
+          {streamStatus === "streaming" && (
+            <TouchControls
+              client={clientRef.current}
+              visible={touchControlsVisible}
+              onToggle={() => setTouchControlsVisible((v) => !v)}
+              mouseSensitivity={settings.mouseSensitivity}
+            />
+          )}
+          </>
         )}
         {streamStatus !== "streaming" && (
           <StreamLoading
