@@ -1,6 +1,7 @@
 export const INPUT_HEARTBEAT = 2;
 export const INPUT_KEY_DOWN = 3;
 export const INPUT_KEY_UP = 4;
+export const INPUT_MOUSE_ABS = 5;
 export const INPUT_MOUSE_REL = 7;
 export const INPUT_MOUSE_BUTTON_DOWN = 8;
 export const INPUT_MOUSE_BUTTON_UP = 9;
@@ -55,6 +56,12 @@ export interface KeyboardPayload {
 export interface MouseMovePayload {
   dx: number;
   dy: number;
+  timestampUs: bigint;
+}
+
+export interface MouseAbsPayload {
+  x: number;
+  y: number;
   timestampUs: bigint;
 }
 
@@ -374,6 +381,19 @@ export class InputEncoder {
     view.setUint32(10, 0, false);                     // reserved: BE
     view.setBigUint64(14, payload.timestampUs, false); // timestamp: BE
     return wrapMouseMoveEvent(bytes, this.protocolVersion);
+  }
+
+  encodeMouseAbsolute(payload: MouseAbsPayload): Uint8Array {
+    const bytes = new Uint8Array(22);
+    const view = new DataView(bytes.buffer);
+    // [type 4B LE=5][x 2B unsigned BE][y 2B unsigned BE][reserved 6B BE][timestamp 8B BE]
+    view.setUint32(0, INPUT_MOUSE_ABS, true);
+    view.setUint16(4, payload.x & 0xFFFF, false);
+    view.setUint16(6, payload.y & 0xFFFF, false);
+    view.setUint16(8, 0, false);
+    view.setUint32(10, 0, false);
+    view.setBigUint64(14, payload.timestampUs, false);
+    return wrapSingleEvent(bytes, this.protocolVersion);
   }
 
   encodeMouseButtonDown(payload: MouseButtonPayload): Uint8Array {

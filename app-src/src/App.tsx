@@ -38,7 +38,7 @@ import { LibraryPage } from "./components/LibraryPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { StreamLoading } from "./components/StreamLoading";
 import { StreamView } from "./components/StreamView";
-import { TouchControls } from "./components/TouchControls";
+import { TouchInput } from "./components/TouchInput";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 
@@ -338,10 +338,7 @@ export function App(): JSX.Element {
   const diagnosticsRef = useRef<StreamDiagnostics>(diagnostics);
   const statsThrottleRef = useRef<number>(0);
   const [showStatsOverlay, setShowStatsOverlay] = useState(true);
-  const [touchControlsVisible, setTouchControlsVisible] = useState(true);
-  const handleToggleTouchControls = useCallback(() => {
-    setTouchControlsVisible((v) => !v);
-  }, []);
+
   const [antiAfkEnabled, setAntiAfkEnabled] = useState(false);
   const [escHoldReleaseIndicator, setEscHoldReleaseIndicator] = useState<{ visible: boolean; progress: number }>({
     visible: false,
@@ -1746,11 +1743,9 @@ export function App(): JSX.Element {
             onEndSession={handleEndSession}
           />
           {streamStatus === "streaming" && (
-            <TouchControls
+            <TouchInput
               client={clientRef.current}
-              visible={touchControlsVisible}
-              onToggle={handleToggleTouchControls}
-              mouseSensitivity={settings.mouseSensitivity}
+              videoRef={videoRef}
             />
           )}
           </>

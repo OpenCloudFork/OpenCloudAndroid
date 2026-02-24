@@ -2996,3 +2996,37 @@ body,
   background: rgba(239, 68, 68, 0.25);
   border-color: rgba(239, 68, 68, 0.7);
 }
+
+/* TouchInput — keyboard toggle + hidden input */
+.ti-kb-btn {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 60;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+.ti-kb-input {
+  position: fixed;
+  bottom: -200px;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: auto;
+  z-index: 59;
+}
