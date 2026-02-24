@@ -13,13 +13,9 @@ import type {
   SubscriptionInfo,
   StreamRegion,
   VideoCodec,
-  DiscordPresencePayload,
-  FlightSlotConfig,
-  HdrCapability,
   HdrStreamState,
   PlatformInfo,
 } from "@shared/gfn";
-import { defaultFlightSlots } from "@shared/gfn";
 
 import {
   GfnWebRtcClient,
@@ -29,12 +25,10 @@ import {
 import { MicAudioService } from "./gfn/micAudioService";
 import type { MicAudioState } from "./gfn/micAudioService";
 import { formatShortcutForDisplay, isShortcutMatch, normalizeShortcut } from "./shortcuts";
-import { getFlightHidService } from "./flight/FlightHidService";
 import {
-  probeHdrCapability,
-  shouldEnableHdr,
   buildInitialHdrState,
 } from "./gfn/hdrCapability";
+import { capabilities } from "./platform/capabilities";
 
 // UI Components
 import { LoginScreen } from "./components/LoginScreen";
@@ -314,7 +308,7 @@ export function App(): JSX.Element {
     discordClientId: "",
     flightControlsEnabled: false,
     flightControlsSlot: 3,
-    flightSlots: defaultFlightSlots(),
+    flightSlots: [],
     hdrStreaming: "off",
     micMode: "off",
     micDeviceId: "",
@@ -355,8 +349,6 @@ export function App(): JSX.Element {
   const [sessionStartedAtMs, setSessionStartedAtMs] = useState<number | null>(null);
   const [sessionElapsedSeconds, setSessionElapsedSeconds] = useState(0);
   const [streamWarning, setStreamWarning] = useState<StreamWarningState | null>(null);
-  const [hdrCapability, setHdrCapability] = useState<HdrCapability | null>(null);
-  const [hdrWarningShown, setHdrWarningShown] = useState(false);
   const [provisioningElapsed, setProvisioningElapsed] = useState(0);
   const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null);
   const [sessionClockVisible, setSessionClockVisible] = useState(true);
@@ -482,13 +474,6 @@ export function App(): JSX.Element {
         const loadedSettings = await window.openNow.getSettings();
         setSettings(loadedSettings);
         setSettingsLoaded(true);
-
-        probeHdrCapability().then((cap) => {
-          setHdrCapability(cap);
-          console.log("[HDR] Capability probe:", cap);
-        }).catch((e) => {
-          console.warn("[HDR] Capability probe failed:", e);
-        });
 
         // Load providers and session (force refresh on startup restore)
         setStartupStatusMessage("Restoring saved session and refreshing token...");
@@ -740,89 +725,6 @@ export function App(): JSX.Element {
     };
   }, [streamStatus, sessionStartedAtMs, settings.sessionClockShowEveryMinutes, settings.sessionClockShowDurationSeconds]);
 
-  // Discord Rich Presence updates
-  useEffect(() => {
-    if (!settings.discordPresenceEnabled || !settings.discordClientId) {
-      return;
-    }
-
-    let payload: DiscordPresencePayload;
-
-    if (streamStatus === "idle") {
-      payload = { type: "idle" };
-    } else if (streamStatus === "queue" || streamStatus === "setup") {
-      const queueTitle = streamingGame?.title?.trim() || lastStreamGameTitleRef.current || undefined;
-      payload = {
-        type: "queue",
-        gameName: queueTitle,
-        queuePosition,
-      };
-    } else {
-      const hasDiag = diagnostics.resolution !== "" || diagnostics.bitrateKbps > 0;
-      const gameTitle = streamingGame?.title?.trim() || lastStreamGameTitleRef.current || undefined;
-      payload = {
-        type: "streaming",
-        gameName: gameTitle,
-        startTimestamp: sessionStartedAtMs ?? undefined,
-        ...(hasDiag && diagnostics.resolution ? { resolution: diagnostics.resolution } : {}),
-        ...(hasDiag && diagnostics.decodeFps > 0 ? { fps: diagnostics.decodeFps } : {}),
-        ...(hasDiag && diagnostics.bitrateKbps > 0 ? { bitrateMbps: Math.round(diagnostics.bitrateKbps / 100) / 10 } : {}),
-      };
-    }
-
-    window.openNow.updateDiscordPresence(payload).catch(() => {});
-  }, [
-    streamStatus,
-    streamingGame?.title,
-    sessionStartedAtMs,
-    queuePosition,
-    diagnostics.resolution,
-    diagnostics.decodeFps,
-    diagnostics.bitrateKbps,
-    settings.discordPresenceEnabled,
-    settings.discordClientId,
-  ]);
-
-  // Clear Discord presence on logout
-  useEffect(() => {
-    if (!authSession) {
-      window.openNow.clearDiscordPresence().catch(() => {});
-    }
-  }, [authSession]);
-
-  // Flight controls: forward WebHID gamepad state to WebRTC client (multi-slot)
-  const activeFlightSlotsRef = useRef<Set<number>>(new Set());
-  useEffect(() => {
-    if (!settings.flightControlsEnabled) {
-      for (const s of activeFlightSlotsRef.current) {
-        clientRef.current?.releaseExternalGamepad(s);
-      }
-      activeFlightSlotsRef.current.clear();
-      return;
-    }
-
-    const slots: FlightSlotConfig[] = Array.isArray(settings.flightSlots) && settings.flightSlots.length === 4
-      ? settings.flightSlots : defaultFlightSlots();
-
-    const wantedSlots = new Set<number>();
-    for (let i = 0; i < 4; i++) {
-      if (slots[i]!.enabled && slots[i]!.deviceKey) wantedSlots.add(i);
-    }
-
-    for (const s of activeFlightSlotsRef.current) {
-      if (!wantedSlots.has(s)) {
-        clientRef.current?.releaseExternalGamepad(s);
-      }
-    }
-    activeFlightSlotsRef.current = wantedSlots;
-
-    const service = getFlightHidService();
-    const unsub = service.onGamepadState((state) => {
-      clientRef.current?.injectExternalGamepad(state);
-    });
-    return unsub;
-  }, [settings.flightControlsEnabled, settings.flightSlots]);
-
   useEffect(() => {
     if (!streamWarning) return;
     const warning = streamWarning;
@@ -872,16 +774,7 @@ export function App(): JSX.Element {
           }
 
           if (clientRef.current) {
-            let hdrEnabledForStream = false;
-            if (hdrCapability && settings.hdrStreaming !== "off") {
-              const decision = shouldEnableHdr(settings.hdrStreaming, hdrCapability, settings.colorQuality);
-              hdrEnabledForStream = decision.enable;
-              console.log(`[HDR] Stream decision: enable=${decision.enable}, reason=${decision.reason}`);
-              if (!decision.enable && settings.hdrStreaming === "on" && !hdrWarningShown) {
-                setHdrWarningShown(true);
-                console.warn(`[HDR] Falling back to SDR: ${decision.reason}`);
-              }
-            }
+            const hdrEnabledForStream = false;
 
             await clientRef.current.handleOffer(event.sdp, activeSession, {
               codec: settings.codec,
@@ -1068,11 +961,7 @@ export function App(): JSX.Element {
       throw new Error("Active session is missing server address. Start the game again to create a new session.");
     }
 
-    let hdrEnabledForClaim = false;
-    if (hdrCapability && settings.hdrStreaming !== "off") {
-      const decision = shouldEnableHdr(settings.hdrStreaming, hdrCapability, settings.colorQuality);
-      hdrEnabledForClaim = decision.enable;
-    }
+    const hdrEnabledForClaim = false;
 
     const claimed = await window.openNow.claimSession({
       token,
@@ -1200,12 +1089,7 @@ export function App(): JSX.Element {
       }
 
       // Determine HDR for session creation (server must set up HDR pipeline)
-      let hdrEnabledForCreate = false;
-      if (hdrCapability && settings.hdrStreaming !== "off") {
-        const decision = shouldEnableHdr(settings.hdrStreaming, hdrCapability, settings.colorQuality);
-        hdrEnabledForCreate = decision.enable;
-        console.log(`[HDR] Create-session decision: enable=${decision.enable}, reason=${decision.reason}`);
-      }
+      const hdrEnabledForCreate = false;
 
       // Create new session
       const newSession = await window.openNow.createSession({
@@ -1935,7 +1819,6 @@ export function App(): JSX.Element {
             settings={settings}
             regions={regions}
             onSettingChange={updateSetting}
-            hdrCapability={hdrCapability}
           />
         )}
       </main>
