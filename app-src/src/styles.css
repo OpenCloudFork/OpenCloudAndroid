@@ -1960,12 +1960,15 @@ body,
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+  contain: strict;
 }
 .sv-video {
   width: 100%; height: 100%;
   object-fit: contain; display: block;
   position: relative; z-index: 1;
   outline: none;
+  will-change: transform;
+  contain: layout size style;
 }
 .sv-video:focus,
 .sv-video:focus-visible {
@@ -2064,6 +2067,7 @@ body,
   border: 1px solid var(--panel-border); border-radius: var(--r-md);
   font-size: 0.7rem; min-width: 240px; max-width: 320px; font-variant-numeric: tabular-nums;
   backdrop-filter: blur(4px);
+  contain: layout style;
 }
 .sv-stats-head {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;

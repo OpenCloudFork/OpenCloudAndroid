@@ -486,6 +486,9 @@ export class GfnWebRtcClient {
     framesDropped: number;
     packetsReceived: number;
     packetsLost: number;
+    totalDecodeTime: number;
+    jitterBufferDelay: number;
+    jitterBufferEmittedCount: number;
     atMs: number;
   } | null = null;
   private renderFpsCounter = { frames: 0, lastUpdate: 0, fps: 0 };
@@ -989,6 +992,9 @@ export class GfnWebRtcClient {
         framesDropped,
         packetsReceived,
         packetsLost,
+        totalDecodeTime: Number(inboundVideo.totalDecodeTime ?? 0),
+        jitterBufferDelay: Number(inboundVideo.jitterBufferDelay ?? 0),
+        jitterBufferEmittedCount: Number(inboundVideo.jitterBufferEmittedCount ?? 0),
         atMs: now,
       };
 
@@ -1016,12 +1022,16 @@ export class GfnWebRtcClient {
       // Jitter (converted to milliseconds)
       this.diagnostics.jitterMs = Math.round(Number(inboundVideo.jitter ?? 0) * 1000 * 10) / 10;
 
-      // Jitter buffer delay — the actual buffering latency added by the jitter buffer.
-      // jitterBufferDelay is cumulative seconds, jitterBufferEmittedCount is cumulative frames.
-      // Average = (delay / emittedCount) * 1000 for milliseconds.
+      // Jitter buffer delay — differential (per-interval) for accurate real-time readings.
       const jbDelay = Number(inboundVideo.jitterBufferDelay ?? 0);
       const jbEmitted = Number(inboundVideo.jitterBufferEmittedCount ?? 0);
-      if (jbEmitted > 0) {
+      if (this.lastStatsSample && jbEmitted > this.lastStatsSample.jitterBufferEmittedCount) {
+        const jbDelayDelta = jbDelay - this.lastStatsSample.jitterBufferDelay;
+        const jbEmittedDelta = jbEmitted - this.lastStatsSample.jitterBufferEmittedCount;
+        if (jbEmittedDelta > 0 && jbDelayDelta >= 0) {
+          this.diagnostics.jitterBufferDelayMs = Math.round((jbDelayDelta / jbEmittedDelta) * 1000 * 10) / 10;
+        }
+      } else if (jbEmitted > 0) {
         this.diagnostics.jitterBufferDelayMs = Math.round((jbDelay / jbEmitted) * 1000 * 10) / 10;
       }
 
@@ -1120,12 +1130,18 @@ export class GfnWebRtcClient {
         }
       }
 
-      // Get decode timing if available
+      // Get decode timing as differential (per-interval) instead of cumulative average
       const totalDecodeTime = Number(inboundVideo.totalDecodeTime ?? 0);
       const totalInterFrameDelay = Number(inboundVideo.totalInterFrameDelay ?? 0);
-      const framesDecodedForTiming = Number(inboundVideo.framesDecoded ?? 1);
+      const framesDecodedForTiming = Number(inboundVideo.framesDecoded ?? 0);
 
-      if (framesDecodedForTiming > 0) {
+      if (this.lastStatsSample && framesDecodedForTiming > this.lastStatsSample.framesDecoded) {
+        const decodeTimeDelta = totalDecodeTime - this.lastStatsSample.totalDecodeTime;
+        const framesDelta = framesDecodedForTiming - this.lastStatsSample.framesDecoded;
+        if (framesDelta > 0 && decodeTimeDelta >= 0) {
+          this.diagnostics.decodeTimeMs = Math.round((decodeTimeDelta / framesDelta) * 1000 * 10) / 10;
+        }
+      } else if (framesDecodedForTiming > 0) {
         this.diagnostics.decodeTimeMs = Math.round((totalDecodeTime / framesDecodedForTiming) * 1000 * 10) / 10;
       }
 
