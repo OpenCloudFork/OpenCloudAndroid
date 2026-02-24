@@ -56,9 +56,7 @@ StatusBar.setBackgroundColor({ color: "#0b1220" }).catch(() => {});
 
 CapApp.addListener("backButton", ({ canGoBack }) => {
   if (isStreaming) {
-    if (window.confirm("End streaming session?")) {
-      window.dispatchEvent(new CustomEvent("opencloud:stop-stream"));
-    }
+    window.dispatchEvent(new CustomEvent("opencloud:stop-stream"));
   } else if (canGoBack) {
     window.history.back();
   } else {
