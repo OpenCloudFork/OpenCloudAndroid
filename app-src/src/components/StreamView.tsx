@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import type { JSX } from "react";
 import { Maximize, Minimize, Gamepad2, Loader2, LogOut, Clock3, AlertTriangle, Mic, MicOff } from "lucide-react";
 import type { MicStatus } from "@shared/gfn";
@@ -103,7 +103,7 @@ function formatWarningSeconds(value: number | undefined): string | null {
   return `${seconds}s`;
 }
 
-export function StreamView({
+export const StreamView = memo(function StreamView({
   videoRef,
   audioRef,
   stats,
@@ -388,4 +388,4 @@ export function StreamView({
       )}
     </div>
   );
-}
+});

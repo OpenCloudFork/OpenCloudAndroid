@@ -335,6 +335,8 @@ export function App(): JSX.Element {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("idle");
   const [diagnostics, setDiagnostics] = useState<StreamDiagnostics>(defaultDiagnostics());
+  const diagnosticsRef = useRef<StreamDiagnostics>(diagnostics);
+  const statsThrottleRef = useRef<number>(0);
   const [showStatsOverlay, setShowStatsOverlay] = useState(true);
   const [touchControlsVisible, setTouchControlsVisible] = useState(true);
   const [antiAfkEnabled, setAntiAfkEnabled] = useState(false);
@@ -764,7 +766,14 @@ export function App(): JSX.Element {
               videoElement: videoRef.current,
               audioElement: audioRef.current,
               onLog: (line: string) => console.log(`[WebRTC] ${line}`),
-              onStats: (stats) => setDiagnostics(stats),
+              onStats: (stats) => {
+                diagnosticsRef.current = stats;
+                const now = performance.now();
+                if (now - statsThrottleRef.current > 1000) {
+                  statsThrottleRef.current = now;
+                  setDiagnostics(stats);
+                }
+              },
               onEscHoldProgress: (visible, progress) => {
                 setEscHoldReleaseIndicator({ visible, progress });
               },
@@ -1684,6 +1693,24 @@ export function App(): JSX.Element {
     );
   }
 
+  const handleToggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  const handleEndSession = useCallback(() => {
+    void handlePromptedStopStream();
+  }, [handlePromptedStopStream]);
+
+  const streamShortcuts = useMemo(() => ({
+    toggleStats: formatShortcutForDisplay(settings.shortcutToggleStats, isMac),
+    togglePointerLock: formatShortcutForDisplay(settings.shortcutTogglePointerLock, isMac),
+    stopStream: formatShortcutForDisplay(settings.shortcutStopStream, isMac),
+  }), [settings.shortcutToggleStats, settings.shortcutTogglePointerLock, settings.shortcutStopStream]);
+
   const showLaunchOverlay = streamStatus !== "idle" || launchError !== null;
 
   // Show stream lifecycle (waiting/connecting/streaming/failure)
@@ -1698,11 +1725,7 @@ export function App(): JSX.Element {
             audioRef={audioRef}
             stats={diagnostics}
             showStats={showStatsOverlay}
-            shortcuts={{
-              toggleStats: formatShortcutForDisplay(settings.shortcutToggleStats, isMac),
-              togglePointerLock: formatShortcutForDisplay(settings.shortcutTogglePointerLock, isMac),
-              stopStream: formatShortcutForDisplay(settings.shortcutStopStream, isMac),
-            }}
+            shortcuts={streamShortcuts}
             serverRegion={session?.serverIp}
             connectedControllers={diagnostics.connectedGamepads}
             antiAfkEnabled={antiAfkEnabled}
@@ -1714,18 +1737,10 @@ export function App(): JSX.Element {
             isConnecting={streamStatus === "connecting"}
             gameTitle={streamingGame?.title ?? "Game"}
             micStatus={micAudioState?.status ?? null}
-            onToggleFullscreen={() => {
-              if (document.fullscreenElement) {
-                document.exitFullscreen().catch(() => {});
-              } else {
-                document.documentElement.requestFullscreen().catch(() => {});
-              }
-            }}
+            onToggleFullscreen={handleToggleFullscreen}
             onConfirmExit={handleExitPromptConfirm}
             onCancelExit={handleExitPromptCancel}
-            onEndSession={() => {
-              void handlePromptedStopStream();
-            }}
+            onEndSession={handleEndSession}
           />
           {streamStatus === "streaming" && (
             <TouchControls
