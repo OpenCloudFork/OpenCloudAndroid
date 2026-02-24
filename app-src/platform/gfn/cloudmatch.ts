@@ -185,13 +185,16 @@ export async function createSessionWeb(input: SessionCreateRequest): Promise<Ses
   }
 
   const data = (await response.json()) as CloudMatchResponse;
-  if (data.requestStatus.statusCode !== 0) {
+  const cmStatus = data.requestStatus.statusCode;
+  const cmDesc = data.requestStatus.statusDescription ?? "none";
+
+  if (cmStatus >= 2) {
     const raw = JSON.stringify(data);
-    debugError("[CloudMatch]", `createSession statusCode=${data.requestStatus.statusCode} desc=${data.requestStatus.statusDescription ?? "none"} | ${raw.slice(0, 500)}`);
+    debugError("[CloudMatch]", `createSession FAILED statusCode=${cmStatus} desc=${cmDesc} | ${raw.slice(0, 500)}`);
     throw SessionError.fromResponse(0, raw);
   }
 
-  debugLog("[CloudMatch]", `createSession OK: sessionId=${data.session.sessionId} status=${data.session.status}`);
+  debugLog("[CloudMatch]", `createSession OK (statusCode=${cmStatus} desc=${cmDesc}): sessionId=${data.session.sessionId} status=${data.session.status}`);
 
   return {
     sessionId: data.session.sessionId, status: data.session.status, zone,
