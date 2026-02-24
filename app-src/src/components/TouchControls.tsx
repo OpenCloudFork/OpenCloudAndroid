@@ -67,7 +67,8 @@ export const TouchControls = memo(function TouchControls({
   onToggle,
   mouseSensitivity,
 }: TouchControlsProps): JSX.Element | null {
-  const encoderRef = useRef<InputEncoder>(new InputEncoder());
+  const encoderRef = useRef<InputEncoder | null>(null);
+  if (!encoderRef.current) encoderRef.current = new InputEncoder();
   const rafRef = useRef<number>(0);
   const stickRef = useRef({ x: 0, y: 0 });
   const stickActiveRef = useRef(false);
@@ -82,7 +83,7 @@ export const TouchControls = memo(function TouchControls({
   const sendGamepad = useCallback(() => {
     if (!client) return;
     const [dx, dy] = applyDeadzone(stickRef.current.x, stickRef.current.y);
-    const encoder = encoderRef.current;
+    const encoder = encoderRef.current!;
     const bytes = encoder.encodeGamepadState(
       {
         controllerId: TOUCH_CONTROLLER_ID,
@@ -105,7 +106,7 @@ export const TouchControls = memo(function TouchControls({
   const sendMouse = useCallback(
     (dx: number, dy: number) => {
       if (!client) return;
-      const encoder = encoderRef.current;
+      const encoder = encoderRef.current!;
       const bytes = encoder.encodeMouseMove({
         dx: Math.round(dx * mouseSensitivity),
         dy: Math.round(dy * mouseSensitivity),
@@ -119,7 +120,7 @@ export const TouchControls = memo(function TouchControls({
   const sendMouseButton = useCallback(
     (button: number, down: boolean) => {
       if (!client) return;
-      const encoder = encoderRef.current;
+      const encoder = encoderRef.current!;
       const bytes = down
         ? encoder.encodeMouseButtonDown({ button, timestampUs: timestampUs() })
         : encoder.encodeMouseButtonUp({ button, timestampUs: timestampUs() });
@@ -131,7 +132,7 @@ export const TouchControls = memo(function TouchControls({
   const sendKey = useCallback(
     (keycode: number, scancode: number, down: boolean) => {
       if (!client) return;
-      const encoder = encoderRef.current;
+      const encoder = encoderRef.current!;
       const bytes = down
         ? encoder.encodeKeyDown({ keycode, scancode, modifiers: 0, timestampUs: timestampUs() })
         : encoder.encodeKeyUp({ keycode, scancode, modifiers: 0, timestampUs: timestampUs() });
@@ -140,26 +141,32 @@ export const TouchControls = memo(function TouchControls({
     [client],
   );
 
-  useEffect(() => {
-    if (!visible) return;
-    let running = true;
+  const startRafLoop = useCallback(() => {
+    if (rafRef.current) return;
     const loop = () => {
-      if (!running) return;
-      if (stickActiveRef.current) {
-        sendGamepad();
+      if (!stickActiveRef.current) {
+        rafRef.current = 0;
+        return;
       }
+      sendGamepad();
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
-    return () => {
-      running = false;
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, [visible, sendGamepad]);
+  }, [sendGamepad]);
 
   useEffect(() => {
     if (!visible) return;
-    const encoder = encoderRef.current;
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+    };
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const encoder = encoderRef.current!;
     if (client) {
       const bytes = encoder.encodeGamepadState(
         {
@@ -220,8 +227,9 @@ export const TouchControls = memo(function TouchControls({
       stickRef.current = { x: 0, y: 0 };
       stickActiveRef.current = true;
       updateKnobVisual(0, 0);
+      startRafLoop();
     },
-    [],
+    [startRafLoop],
   );
 
   const onStickTouchMove = useCallback(
@@ -318,7 +326,7 @@ export const TouchControls = memo(function TouchControls({
           }
         }
         if (Math.abs(totalDy) > 1) {
-          const encoder = encoderRef.current;
+          const encoder = encoderRef.current!;
           if (client) {
             const bytes = encoder.encodeMouseWheel({
               delta: Math.round(-totalDy * 3),
