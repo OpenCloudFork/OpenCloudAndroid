@@ -88,8 +88,9 @@ body {
   background: var(--bg-a);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow: visible;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #root {
