@@ -540,6 +540,9 @@ export class GfnWebRtcClient {
   private serverRegion = "";
   private gpuType = "";
 
+  private diagnosticsDirty = true;
+  private lastEmittedSnapshot: StreamDiagnostics | null = null;
+
   private diagnostics: StreamDiagnostics = {
     connectionState: "closed",
     inputReady: false,
@@ -759,8 +762,16 @@ export class GfnWebRtcClient {
 
   private emitStats(): void {
     if (this.options.onStats) {
-      this.options.onStats({ ...this.diagnostics });
+      if (this.diagnosticsDirty || !this.lastEmittedSnapshot) {
+        this.lastEmittedSnapshot = { ...this.diagnostics, hdrState: { ...this.diagnostics.hdrState } };
+        this.diagnosticsDirty = false;
+      }
+      this.options.onStats(this.lastEmittedSnapshot);
     }
+  }
+
+  private markDiagnosticsDirty(): void {
+    this.diagnosticsDirty = true;
   }
 
   private resetDiagnostics(): void {
@@ -813,6 +824,7 @@ export class GfnWebRtcClient {
       serverRegion: this.serverRegion,
 
     };
+    this.markDiagnosticsDirty();
     this.emitStats();
   }
 
@@ -821,6 +833,7 @@ export class GfnWebRtcClient {
     this.inputProtocolVersion = 2;
     this.inputEncoder.setProtocolVersion(2);
     this.diagnostics.inputReady = false;
+    this.markDiagnosticsDirty();
     this.emitStats();
   }
 
@@ -1175,6 +1188,7 @@ export class GfnWebRtcClient {
     }
 
     this.checkForGreenScreen();
+    this.markDiagnosticsDirty();
     this.emitStats();
   }
 
@@ -1432,7 +1446,8 @@ export class GfnWebRtcClient {
           this.log(`  Buttons: ${gamepad.buttons.length}, Axes: ${gamepad.axes.length}, Mapping: ${gamepad.mapping}`);
           this.log(`  Bitmap now: 0x${this.gamepadBitmap.toString(16)}`);
           this.diagnostics.connectedGamepads = this.connectedGamepads.size;
-          this.emitStats();
+          this.markDiagnosticsDirty();
+    this.emitStats();
         }
 
         // Read and encode gamepad state
@@ -1482,7 +1497,8 @@ export class GfnWebRtcClient {
         this.gamepadBitmap &= ~(1 << i);
         this.log(`Gamepad ${i} disconnected, bitmap now: 0x${this.gamepadBitmap.toString(16)}`);
         this.diagnostics.connectedGamepads = this.connectedGamepads.size;
-        this.emitStats();
+        this.markDiagnosticsDirty();
+    this.emitStats();
 
         // Send state with updated bitmap (gamepad bit cleared = disconnected)
         const disconnectState: GamepadInput = {
@@ -1585,7 +1601,8 @@ export class GfnWebRtcClient {
       this.inputProtocolVersion = version;
       this.inputEncoder.setProtocolVersion(version);
       this.diagnostics.inputReady = true;
-      this.emitStats();
+      this.markDiagnosticsDirty();
+    this.emitStats();
       this.log(`Input handshake complete (protocol v${version}) — starting heartbeat + gamepad polling`);
       this.setupInputHeartbeat();
       this.setupGamepadPolling();
@@ -1929,7 +1946,8 @@ export class GfnWebRtcClient {
       this.gamepadBitmap |= (1 << slot);
       this.log(`External gamepad connected on slot ${slot} (flight controls)`);
       this.diagnostics.connectedGamepads = this.connectedGamepads.size;
-      this.emitStats();
+      this.markDiagnosticsDirty();
+    this.emitStats();
     } else if (!raw.connected && this.externalGamepadSlots.has(slot)) {
       this.externalGamepadSlots.delete(slot);
       this.connectedGamepads.delete(slot);
@@ -1937,7 +1955,8 @@ export class GfnWebRtcClient {
       this.gamepadBitmap &= ~(1 << slot);
       this.log(`External gamepad disconnected from slot ${slot}`);
       this.diagnostics.connectedGamepads = this.connectedGamepads.size;
-      this.emitStats();
+      this.markDiagnosticsDirty();
+    this.emitStats();
       const usePR = this.mouseInputChannel?.readyState === "open";
       const bytes = this.inputEncoder.encodeGamepadState(state, this.gamepadBitmap, usePR);
       this.sendGamepad(bytes);
@@ -1981,6 +2000,7 @@ export class GfnWebRtcClient {
     this.gamepadBitmap &= ~(1 << slot);
     this.log(`External gamepad released from slot ${slot}`);
     this.diagnostics.connectedGamepads = this.connectedGamepads.size;
+    this.markDiagnosticsDirty();
     this.emitStats();
 
     if (this.inputReady) {
@@ -2913,6 +2933,7 @@ export class GfnWebRtcClient {
     this.diagnostics.connectionState = pc.connectionState;
     this.diagnostics.serverRegion = this.serverRegion;
     this.diagnostics.gpuType = this.gpuType;
+    this.markDiagnosticsDirty();
     this.emitStats();
 
     this.resetInputState();
@@ -2949,7 +2970,8 @@ export class GfnWebRtcClient {
 
     pc.onconnectionstatechange = () => {
       this.diagnostics.connectionState = pc.connectionState;
-      this.emitStats();
+      this.markDiagnosticsDirty();
+    this.emitStats();
       this.log(`Peer connection state: ${pc.connectionState}`);
     };
 
