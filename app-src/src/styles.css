@@ -8,6 +8,12 @@
 :root {
   color-scheme: dark;
 
+  /* Safe area insets */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
   /* Backgrounds — layered obsidian-charcoal */
   --bg-a: #0a0a0c;
   --bg-b: #111114;
@@ -147,7 +153,7 @@ body {
 
 .auth-refresh-notice {
   position: fixed;
-  top: calc(var(--navbar-h) + 10px);
+  top: calc(var(--safe-top) + var(--navbar-h) + 10px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1200;
@@ -183,10 +189,12 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--navbar-h);
+  padding-top: var(--safe-top);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 0 16px;
+  padding-left: calc(16px + var(--safe-left));
+  padding-right: calc(16px + var(--safe-right));
   background: rgba(10, 10, 12, 0.97);
   border-bottom: 1px solid var(--panel-border);
   z-index: 1000;
@@ -453,7 +461,7 @@ body {
 
 .navbar-modal {
   width: min(760px, calc(100vw - 40px));
-  max-height: calc(100vh - 70px);
+  max-height: calc(100dvh - 70px);
   border-radius: 12px;
   border: 1px solid var(--panel-border);
   background: var(--panel);
@@ -482,8 +490,8 @@ body {
 }
 
 .navbar-modal-close {
-  width: 26px;
-  height: 26px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -610,8 +618,8 @@ body {
   }
 
   .navbar-session-resume {
-    width: 170px;
-    min-width: 170px;
+    width: auto;
+    min-width: 0;
   }
 }
 
@@ -620,25 +628,43 @@ body {
     --navbar-h: 44px;
   }
   .navbar {
-    padding: 0 10px;
+    padding-left: calc(10px + var(--safe-left));
+    padding-right: calc(10px + var(--safe-right));
     gap: 4px;
   }
   .navbar-logo-text {
     display: none;
   }
   .navbar-nav {
-    position: static;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(56px + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: rgba(10, 10, 12, 0.97);
+    border-top: 1px solid var(--panel-border);
+    border-bottom: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 1000;
     transform: none;
-    margin-left: 8px;
-    gap: 1px;
+    margin-left: 0;
+    gap: 0;
   }
   .navbar-link {
-    padding: 5px 8px;
-    font-size: 0.72rem;
-    gap: 4px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 16px;
+    font-size: 0.68rem;
+    min-height: 44px;
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
   }
   .navbar-link span {
-    display: none;
+    display: block;
   }
   .navbar-right {
     gap: 6px;
@@ -654,12 +680,21 @@ body {
     min-width: 0;
     padding: 5px 10px;
     font-size: 0.72rem;
+    flex-shrink: 1;
   }
   .navbar-session-resume-game {
     display: none;
   }
+  .navbar-logout {
+    width: 44px;
+    height: 44px;
+  }
   .main-content {
     padding: 12px;
+    padding-top: calc(var(--safe-top) + var(--navbar-h) + 12px);
+    padding-bottom: calc(56px + var(--safe-bottom) + 16px);
+    padding-left: calc(12px + var(--safe-left));
+    padding-right: calc(12px + var(--safe-right));
   }
 }
 
@@ -672,7 +707,10 @@ body {
   overflow-y: auto;
   padding: 20px;
   margin-top: 0;
-  padding-top: calc(var(--navbar-h) + 20px);
+  padding-top: calc(var(--safe-top) + var(--navbar-h) + 20px);
+  padding-left: calc(20px + var(--safe-left));
+  padding-right: calc(20px + var(--safe-right));
+  padding-bottom: calc(20px + var(--safe-bottom));
   will-change: scroll-position;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
@@ -734,7 +772,10 @@ body {
   position: relative; z-index: 1;
   display: flex; flex-direction: column;
   align-items: center; gap: 28px;
+  padding: calc(var(--safe-top) + 16px) 16px calc(var(--safe-bottom) + 16px);
   animation: fade-in 500ms var(--ease);
+  max-height: 100dvh;
+  overflow-y: auto;
 }
 
 .login-brand {
@@ -1023,6 +1064,7 @@ body {
 @media (min-width: 1024px) and (max-width: 1279px) { .game-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 768px) and (max-width: 1023px) { .game-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 767px) { .game-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+@media (max-width: 399px) { .game-grid { grid-template-columns: 1fr; gap: 10px; } }
 @media (max-width: 767px) {
   .home-toolbar {
     gap: 8px;
@@ -1043,6 +1085,7 @@ body {
   .home-search-input {
     padding: 6px 10px 6px 30px;
     font-size: 0.78rem;
+    min-height: 44px;
   }
   .home-count {
     font-size: 0.72rem;
@@ -1061,6 +1104,15 @@ body {
     max-width: none;
     order: 3;
     flex-basis: 100%;
+  }
+  .library-search-input {
+    min-height: 44px;
+  }
+  .home-tab {
+    padding: 10px 14px;
+    font-size: 0.72rem;
+    gap: 3px;
+    min-height: 44px;
   }
 }
 
@@ -1093,15 +1145,6 @@ body {
   background: radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
 }
 
-.game-card:hover {
-  transform: translateY(-2px) scale(1.01);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.game-card:hover::after {
-  opacity: 1;
-}
-
 .game-card.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-glow);
@@ -1121,8 +1164,6 @@ body {
   object-fit: cover;
   transition: transform var(--t-normal);
 }
-.game-card:hover .game-card-image { transform: scale(1.03); }
-
 .game-card-image-placeholder {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
@@ -1137,7 +1178,6 @@ body {
   opacity: 0;
   transition: opacity var(--t-normal);
 }
-.game-card:hover .game-card-overlay { opacity: 1; }
 
 .game-card-gradient {
   position: absolute; inset: 0;
@@ -1306,7 +1346,6 @@ body {
   padding: 18px 20px;
   transition: border-color var(--t-normal);
 }
-.settings-section:hover { border-color: rgba(255, 255, 255, 0.08); }
 
 .settings-section-header {
   display: flex; align-items: center; gap: 10px;
@@ -1437,6 +1476,7 @@ body {
   }
   .settings-row {
     gap: 8px;
+    min-height: 44px;
   }
   .settings-label {
     font-size: 0.82rem;
@@ -1445,12 +1485,15 @@ body {
     gap: 3px;
   }
   .settings-chip {
-    padding: 5px 8px;
+    padding: 8px 12px;
     font-size: 0.76rem;
+    min-height: 44px;
+    align-items: center;
   }
   .settings-seg-btn {
-    padding: 6px 8px;
+    padding: 10px 8px;
     font-size: 0.76rem;
+    min-height: 44px;
   }
   .settings-shortcut-row {
     flex-direction: column;
@@ -1464,9 +1507,49 @@ body {
   .settings-text-input {
     min-width: 80px;
     font-size: 0.78rem;
+    min-height: 44px;
   }
   .settings-sections {
-    gap: 10px;
+    gap: 14px;
+  }
+  .settings-toggle {
+    width: 52px;
+    height: 28px;
+    min-width: 52px;
+  }
+  .settings-toggle-track::before {
+    width: 22px;
+    height: 22px;
+  }
+  .settings-toggle input:checked + .settings-toggle-track::before {
+    transform: translateX(24px);
+  }
+  .settings-footer {
+    padding-bottom: var(--safe-bottom);
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-a);
+    padding-top: 12px;
+    z-index: 10;
+  }
+  .settings-save-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 50px;
+    font-size: 0.95rem;
+  }
+  .settings-btn-inline {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+  .region-selected {
+    min-height: 44px;
+  }
+  .region-dropdown-item {
+    min-height: 44px;
+  }
+  .region-dropdown-search-input {
+    min-height: 44px;
   }
 }
 
@@ -2003,7 +2086,7 @@ body {
 
 .sv-session-clock {
   position: fixed;
-  top: 14px;
+  top: calc(14px + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 1001;
@@ -2027,7 +2110,7 @@ body {
 
 .sv-time-warning {
   position: fixed;
-  top: 54px;
+  top: calc(54px + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 1002;
@@ -2063,7 +2146,7 @@ body {
 
 /* Stats HUD (StreamView inline stats) */
 .sv-stats {
-  position: fixed; top: 14px; right: 14px; z-index: 1001;
+  position: fixed; top: calc(14px + var(--safe-top)); right: calc(14px + var(--safe-right)); z-index: 1001;
   display: flex; flex-direction: column; gap: 5px;
   padding: 8px 10px;
   background: rgba(10, 10, 12, 0.9);
@@ -2148,7 +2231,7 @@ body {
 
 /* Controller indicator */
 .sv-ctrl {
-  position: fixed; top: 14px; left: 14px;
+  position: fixed; top: calc(14px + var(--safe-top)); left: calc(14px + var(--safe-left));
   display: flex; align-items: center; gap: 6px;
   padding: 7px 11px;
   background: rgba(10, 10, 12, 0.92);
@@ -2158,7 +2241,7 @@ body {
 .sv-ctrl-n { font-size: 0.75rem; font-weight: 700; color: var(--ink); }
 
 .sv-afk {
-  position: fixed; top: 14px; left: 14px;
+  position: fixed; top: calc(14px + var(--safe-top)); left: calc(14px + var(--safe-left));
   display: inline-flex; align-items: center; gap: 7px;
   padding: 7px 11px;
   background: rgba(10, 10, 12, 0.92);
@@ -2233,8 +2316,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-}
+  padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));}
 .sv-exit-backdrop {
   position: absolute;
   inset: 0;
@@ -2348,7 +2430,7 @@ body {
 
 /* Fullscreen button */
 .sv-fs {
-  position: fixed; bottom: 18px; right: 18px; z-index: 1001;
+  position: fixed; bottom: calc(18px + var(--safe-bottom)); right: calc(18px + var(--safe-right)); z-index: 1001;
   width: 38px; height: 38px;
   border-radius: var(--r-sm);
   border: 1px solid var(--panel-border);
@@ -2361,7 +2443,7 @@ body {
 
 /* End session button */
 .sv-end {
-  position: fixed; bottom: 18px; right: 64px; z-index: 1001;
+  position: fixed; bottom: calc(18px + var(--safe-bottom)); right: calc(64px + var(--safe-right)); z-index: 1001;
   width: 38px; height: 38px;
   border-radius: var(--r-sm);
   border: 1px solid var(--panel-border);
@@ -2374,7 +2456,7 @@ body {
 
 /* Keyboard hints */
 .sv-hints {
-  position: fixed; bottom: 18px; left: 18px; z-index: 1001;
+  position: fixed; bottom: calc(18px + var(--safe-bottom)); left: calc(18px + var(--safe-left)); z-index: 1001;
   display: flex; flex-direction: column; gap: 4px;
   padding: 8px 11px;
   background: rgba(10, 10, 12, 0.9);
@@ -2390,7 +2472,7 @@ body {
 
 /* Microphone status indicator — positioned left of sv-end (right:64px + 38px width + 8px gap = 110px) */
 .sv-mic {
-  position: fixed; bottom: 18px; right: 110px; z-index: 1001;
+  position: fixed; bottom: calc(18px + var(--safe-bottom)); right: calc(110px + var(--safe-right)); z-index: 1001;
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   height: 38px; padding: 0 10px;
   background: rgba(10, 10, 12, 0.9);
@@ -2404,7 +2486,7 @@ body {
 
 /* Game title toast */
 .sv-title-bar {
-  position: fixed; bottom: 68px; left: 50%; transform: translateX(-50%); z-index: 1001;
+  position: fixed; bottom: calc(68px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); z-index: 1001;
   padding: 7px 18px;
   background: rgba(10, 10, 12, 0.9);
   border: 1px solid var(--panel-border); border-radius: var(--r-sm);
@@ -2414,19 +2496,19 @@ body {
 
 @media (max-width: 640px) {
   .sv-session-clock {
-    top: 10px;
+    top: calc(10px + var(--safe-top));
     padding: 6px 10px;
     font-size: 0.7rem;
   }
   .sv-time-warning {
-    top: 46px;
+    top: calc(46px + var(--safe-top));
     max-width: calc(100vw - 24px);
     padding: 7px 10px;
     font-size: 0.68rem;
   }
   .sv-exit {
     align-items: flex-end;
-    padding: 14px;
+    padding: calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left));
   }
   .sv-exit-card {
     width: 100%;
@@ -2439,6 +2521,33 @@ body {
   .sv-exit-actions {
     flex-direction: column;
   }
+  .sv-exit-btn {
+    min-height: 48px;
+    font-size: 0.9rem;
+  }
+  .sv-exit-hint {
+    display: none;
+  }
+  .sv-fs, .sv-end {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    opacity: 0.8;
+  }
+  .sv-stats {
+    max-width: calc(100vw - 28px);
+    min-width: 200px;
+    font-size: 0.64rem;
+    padding: 6px 8px;
+  }
+  .sload-cover {
+    width: 56px;
+    height: 56px;
+  }
+  .sload-title {
+    font-size: 1.1rem;
+    max-width: 220px;
+  }
 }
 
 
@@ -2447,7 +2556,8 @@ body {
    ====================================================== */
 .sload {
   position: fixed; inset: 0; z-index: 1000;
-  display: flex; align-items: center; justify-content: center; padding: 24px;
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
 }
 .sload-backdrop {
   position: absolute; inset: 0;
@@ -2586,12 +2696,13 @@ body {
 /* Cancel */
 .sload-cancel {
   display: flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: var(--r-sm);
+  padding: 12px 20px; border-radius: var(--r-sm);
   border: 1px solid var(--panel-border-solid);
   background: var(--bg-c);
-  color: var(--ink-muted); font-size: 0.8rem; font-weight: 600;
+  color: var(--ink-muted); font-size: 0.85rem; font-weight: 600;
   font-family: inherit;
   cursor: pointer; transition: transform var(--t-normal), background var(--t-normal), border-color var(--t-normal), color var(--t-normal);
+  min-height: 48px;
 }
 .sload-cancel:hover {
   background: var(--card-hover);
@@ -2605,7 +2716,7 @@ body {
    STATS OVERLAY COMPONENT (.sovl-)
    ====================================================== */
 .sovl {
-  position: fixed; top: 14px; right: 14px; z-index: 1001;
+  position: fixed; top: calc(14px + var(--safe-top)); right: calc(14px + var(--safe-right)); z-index: 1001;
 }
 .sovl-body {
   display: flex; flex-wrap: wrap; gap: 5px;
@@ -2642,7 +2753,7 @@ body {
    ====================================================== */
 @media (orientation: landscape) and (max-height: 500px) {
   .sv-stats {
-    top: 8px; right: 8px;
+    top: calc(8px + var(--safe-top)); right: calc(8px + var(--safe-right));
     padding: 6px 8px;
     font-size: 0.64rem;
     min-width: 200px;
@@ -2651,54 +2762,56 @@ body {
     overflow-y: auto;
   }
   .sv-ctrl {
-    top: 8px; left: 8px;
+    top: calc(8px + var(--safe-top)); left: calc(8px + var(--safe-left));
     padding: 5px 8px;
   }
   .sv-afk {
-    top: 8px; left: 8px;
+    top: calc(8px + var(--safe-top)); left: calc(8px + var(--safe-left));
   }
   .sv-afk--stacked {
-    top: 44px;
+    top: calc(44px + var(--safe-top));
   }
   .sv-fs {
-    bottom: 10px; right: 10px;
-    width: 34px; height: 34px;
+    bottom: calc(10px + var(--safe-bottom)); right: calc(10px + var(--safe-right));
+    width: 44px; height: 44px;
+    border-radius: 50%;
   }
   .sv-end {
-    bottom: 10px; right: 52px;
-    width: 34px; height: 34px;
+    bottom: calc(10px + var(--safe-bottom)); right: calc(62px + var(--safe-right));
+    width: 44px; height: 44px;
+    border-radius: 50%;
   }
   .sv-hints {
-    bottom: 10px; left: 10px;
+    bottom: calc(10px + var(--safe-bottom)); left: calc(10px + var(--safe-left));
     padding: 6px 8px;
   }
   .sv-session-clock {
-    top: 8px;
+    top: calc(8px + var(--safe-top));
     padding: 5px 10px;
     font-size: 0.68rem;
   }
   .sv-time-warning {
-    top: 38px;
+    top: calc(38px + var(--safe-top));
     padding: 6px 10px;
     font-size: 0.66rem;
   }
   .sv-mic {
-    bottom: 10px; right: 94px;
-    height: 34px;
+    bottom: calc(10px + var(--safe-bottom)); right: calc(114px + var(--safe-right));
+    height: 44px;
     padding: 0 8px;
     font-size: 0.66rem;
   }
   .sv-title-bar {
-    bottom: 52px;
+    bottom: calc(62px + var(--safe-bottom));
     padding: 5px 14px;
     font-size: 0.78rem;
   }
   .ti-kb-btn {
-    bottom: 10px;
-    right: 10px;
+    bottom: calc(10px + var(--safe-bottom));
+    right: calc(10px + var(--safe-right));
   }
   .sv-exit {
-    padding: 14px;
+    padding: calc(14px + var(--safe-top)) calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left));
   }
   .sv-exit-card {
     padding: 14px 14px 12px;
@@ -2711,8 +2824,149 @@ body {
   .sv-exit-actions {
     margin-top: 10px;
   }
+  .sv-exit-btn {
+    min-height: 48px;
+  }
   .sv-esc-hold {
     top: 15%;
+  }
+}
+
+
+/* ======================================================
+   HOVER-ONLY STYLES (prevent sticky hover on touch)
+   ====================================================== */
+@media (hover: hover) {
+  .game-card:hover { transform: translateY(-2px) scale(1.01); }
+  .game-card:hover::after { opacity: 1; }
+  .game-card:hover .game-card-overlay { opacity: 1; }
+  .game-card:hover .game-card-image { transform: scale(1.03); }
+  .settings-chip:hover { background: var(--panel-border-solid); color: var(--ink-soft); border-color: var(--panel-border-solid); }
+  .settings-section:hover { border-color: rgba(255, 255, 255, 0.08); }
+  .game-card-store-chip:hover { color: var(--ink-soft); background: var(--panel-border-solid); }
+}
+
+@media (hover: none) {
+  .game-card:hover { transform: none; }
+  .game-card:hover::after { opacity: 0; }
+  .game-card:hover .game-card-image { transform: none; }
+  .game-card-overlay { opacity: 1; }
+  .game-card-play-button { width: 44px; height: 44px; }
+}
+
+/* ======================================================
+   TOUCH ACTIVE STATES
+   ====================================================== */
+.navbar-link:active,
+.settings-chip:active,
+.settings-seg-btn:active,
+.settings-save-btn:active,
+.settings-btn-inline:active,
+.login-button:active,
+.login-select:active,
+.login-dropdown-item:active,
+.sload-cancel:active,
+.sv-exit-btn:active,
+.sv-fs:active,
+.sv-end:active,
+.game-card:active,
+.navbar-subscription-chip:active,
+.navbar-logout:active,
+.home-tab:active {
+  transform: scale(0.97);
+}
+
+/* User-select: none on interactive elements */
+button, .navbar-link, .settings-chip, .settings-seg-btn, .home-tab, .game-card {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ======================================================
+   MOBILE TOAST
+   ====================================================== */
+@media (max-width: 767px) {
+  .toast-container {
+    top: calc(var(--safe-top) + var(--navbar-h) + 8px);
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100vw - 32px);
+    max-width: 400px;
+  }
+  .toast-message {
+    white-space: normal;
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes toast-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  }
+}
+
+/* ======================================================
+   MOBILE MODAL DIALOGS
+   ====================================================== */
+@media (max-width: 767px) {
+  .navbar-modal {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 48px);
+    border-radius: var(--r-lg);
+  }
+  .navbar-modal-body {
+    padding: 14px;
+  }
+  .navbar-modal-row span {
+    font-size: 0.8rem;
+  }
+  .navbar-modal-row strong {
+    font-size: 0.85rem;
+  }
+}
+
+/* ======================================================
+   MOBILE LOGIN
+   ====================================================== */
+@media (max-width: 767px) {
+  .login-content {
+    padding: calc(var(--safe-top) + 16px) 16px calc(var(--safe-bottom) + 16px);
+    gap: 20px;
+  }
+  .login-card {
+    padding: 24px 20px;
+    margin: 0 8px;
+    max-width: 100%;
+  }
+  .login-card-header {
+    margin-bottom: 20px;
+  }
+  .login-button {
+    min-height: 50px;
+    font-size: 0.95rem;
+  }
+  .login-select {
+    min-height: 48px;
+  }
+  .login-dropdown-item {
+    min-height: 44px;
+    padding: 12px 14px;
+  }
+}
+
+/* ======================================================
+   MOBILE GAME CARD OVERLAY
+   ====================================================== */
+@media (max-width: 767px) {
+  .game-card-overlay {
+    opacity: 1;
+  }
+  .game-card-play-button {
+    width: 44px;
+    height: 44px;
   }
 }
 
@@ -3115,7 +3369,7 @@ body {
 /* ── Toast Notifications ─────────────────────────── */
 .toast-container {
   position: fixed;
-  top: 16px;
+  top: calc(16px + var(--safe-top));
   right: 16px;
   z-index: 99999;
   display: flex;
@@ -3233,8 +3487,8 @@ body {
 /* TouchInput — keyboard toggle + hidden input */
 .ti-kb-btn {
   position: fixed;
-  bottom: 18px;
-  right: 18px;
+  bottom: calc(18px + var(--safe-bottom));
+  right: calc(18px + var(--safe-right));
   z-index: 60;
   width: 44px;
   height: 44px;
