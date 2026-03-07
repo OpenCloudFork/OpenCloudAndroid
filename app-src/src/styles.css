@@ -188,7 +188,7 @@ body {
 .navbar {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: var(--navbar-h);
+  height: calc(var(--navbar-h) + var(--safe-top));
   padding-top: var(--safe-top);
   display: flex;
   align-items: center;
