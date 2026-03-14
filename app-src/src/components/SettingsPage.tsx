@@ -1,7 +1,7 @@
-import { Monitor, Volume2, Mouse, Settings2, Globe, Save, Check, Search, X, Loader, Cpu, Zap, Sun, RefreshCw, Mic, MicOff, Bug, Copy, Share2 } from "lucide-react";
+import { Monitor, Volume2, Mouse, Settings2, Globe, Save, Check, Search, X, Loader, Cpu, Zap, RefreshCw, Mic, MicOff, Bug, Copy, Share2, ChevronDown, Minus, Plus } from "lucide-react";
 import { Clipboard } from "@capacitor/clipboard";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 
 import type {
   Settings,
@@ -249,6 +249,48 @@ function loadStoredCodecResults(): CodecTestResult[] | null {
   } catch {
     return null;
   }
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+interface SettingsAccordionSectionProps {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}
+
+function SettingsAccordionSection({
+  title,
+  icon,
+  children,
+  defaultOpen = true,
+}: SettingsAccordionSectionProps): JSX.Element {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className={`settings-section settings-section--accordion ${open ? "is-open" : "is-collapsed"}`}>
+      <button
+        type="button"
+        className="settings-section-header settings-section-header--button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+      >
+        <span className="settings-section-header-main">
+          {icon}
+          <h2>{title}</h2>
+        </span>
+        <ChevronDown size={18} className={`settings-section-chevron ${open ? "rotated" : ""}`} />
+      </button>
+      <div className={`settings-section-panel ${open ? "is-open" : ""}`} aria-hidden={!open}>
+        <div className="settings-section-panel-inner">
+          <div className="settings-rows">{children}</div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function loadCachedEntitledResolutions(): EntitledResolutionsCache | null {
@@ -707,6 +749,31 @@ export function SettingsPage({ settings, regions, onSettingChange }: SettingsPag
     return found?.name ?? settings.region;
   }, [settings.region, regions]);
 
+  const isAndroid = capabilities.platform === "android";
+  const showShortcutSettings = capabilities.supportsDesktopShortcuts;
+  const showPointerLockShortcut = capabilities.supportsPointerLock && capabilities.supportsDesktopShortcuts;
+  const showVideoBackendSettings = capabilities.supportsSoftwareDecoderToggle || capabilities.supportsLinuxDecodeBackend;
+  const hasShortcutError =
+    toggleStatsError
+    || stopStreamError
+    || toggleAntiAfkError
+    || micToggleShortcutError
+    || (showPointerLockShortcut && togglePointerLockError);
+
+  const updateSessionClockSetting = useCallback(
+    (
+      key: "sessionClockShowEveryMinutes" | "sessionClockShowDurationSeconds",
+      nextValue: number,
+    ) => {
+      if (key === "sessionClockShowEveryMinutes") {
+        handleChange(key, clampNumber(nextValue, 0, 480));
+        return;
+      }
+      handleChange(key, clampNumber(nextValue, 5, 300));
+    },
+    [handleChange]
+  );
+
   const handleShortcutBlur = <K extends keyof Settings>(
     key: K,
     rawValue: string,
@@ -787,444 +854,390 @@ export function SettingsPage({ settings, regions, onSettingChange }: SettingsPag
       </header>
 
       <div className="settings-sections">
-        {/* ── Video ──────────────────────────────────────── */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Monitor size={18} />
-            <h2>Video</h2>
-          </div>
+        <SettingsAccordionSection title="Video" icon={<Monitor size={18} />}>
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">
+              Resolution
+              {subscriptionLoading && <Loader size={12} className="settings-loading-icon" />}
+            </label>
 
-          <div className="settings-rows">
-            {/* Resolution — dynamic or static chips */}
-            <div className="settings-row settings-row--column">
-              <label className="settings-label">
-                Resolution
-                {subscriptionLoading && <Loader size={12} className="settings-loading-icon" />}
-              </label>
-
-              {hasDynamic ? (
-                <div className="settings-preset-groups">
-                  {resolutionGroups.map((group) => (
-                    <div key={group.category} className="settings-preset-group">
-                      <span className="settings-preset-group-label">{group.category}</span>
-                      <div className="settings-chip-row">
-                        {group.resolutions.map((res) => (
-                          <button
-                            key={res.value}
-                            className={`settings-chip ${settings.resolution === res.value ? "active" : ""}`}
-                            onClick={() => {
-                              handleChange("resolution", res.value);
-                            }}
-                          >
-                            <span>{res.label}</span>
-                          </button>
-                        ))}
-                      </div>
+            {hasDynamic ? (
+              <div className="settings-preset-groups">
+                {resolutionGroups.map((group) => (
+                  <div key={group.category} className="settings-preset-group">
+                    <span className="settings-preset-group-label">{group.category}</span>
+                    <div className="settings-chip-row">
+                      {group.resolutions.map((res) => (
+                        <button
+                          key={res.value}
+                          type="button"
+                          className={`settings-chip ${settings.resolution === res.value ? "active" : ""}`}
+                          onClick={() => handleChange("resolution", res.value)}
+                        >
+                          <span>{res.label}</span>
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="settings-chip-row">
-                  {STATIC_RESOLUTION_PRESETS.map((preset) => (
-                    <button
-                      key={preset.value}
-                      className={`settings-chip ${settings.resolution === preset.value ? "active" : ""}`}
-                      onClick={() => {
-                        handleChange("resolution", preset.value);
-                      }}
-                    >
-                      <span>{preset.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* FPS — dynamic or static chips */}
-            <div className="settings-row">
-              <label className="settings-label">FPS</label>
-              <div className="settings-chip-row">
-                {(hasDynamic ? dynamicFpsOptions.map((v) => ({ value: v })) : STATIC_FPS_PRESETS).map(
-                  (preset) => (
-                    <button
-                      key={preset.value}
-                      className={`settings-chip ${settings.fps === preset.value ? "active" : ""}`}
-                      onClick={() => {
-                        handleChange("fps", preset.value);
-                      }}
-                    >
-                      <span>{preset.value}</span>
-                    </button>
-                  )
-                )}
-              </div>
-            </div>
-
-            {/* Codec */}
-            <div className="settings-row">
-              <label className="settings-label">Codec</label>
-              <div className="settings-chip-row">
-                {codecOptions.map((codec) => (
-                  <button
-                    key={codec}
-                    className={`settings-chip ${settings.codec === codec ? "active" : ""}`}
-                    onClick={() => handleChange("codec", codec)}
-                  >
-                    {codec}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Decoder preference */}
-            <div className="settings-row settings-row--column">
-              <label className="settings-label">Decoder</label>
-              <div className="settings-chip-row">
-                {accelerationOptions.map((option) => (
-                  <button
-                    key={`decoder-${option.value}`}
-                    className={`settings-chip ${settings.decoderPreference === option.value ? "active" : ""}`}
-                    onClick={() => handleChange("decoderPreference", option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Encoder preference */}
-            <div className="settings-row settings-row--column">
-              <label className="settings-label">Encoder</label>
-              <div className="settings-chip-row">
-                {accelerationOptions.map((option) => (
-                  <button
-                    key={`encoder-${option.value}`}
-                    className={`settings-chip ${settings.encoderPreference === option.value ? "active" : ""}`}
-                    onClick={() => handleChange("encoderPreference", option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              <span className="settings-subtle-hint">Applies after app restart.</span>
-            </div>
-
-            {/* Color Quality */}
-            <div className="settings-row settings-row--column">
-              <label className="settings-label">Color Depth</label>
-              <div className="settings-chip-row">
-                {colorQualityOptions.map((opt) => {
-                  const needsHevc = colorQualityRequiresHevc(opt.value);
-                  return (
-                    <button
-                      key={opt.value}
-                      className={`settings-chip ${settings.colorQuality === opt.value ? "active" : ""}`}
-                      onClick={() => handleColorQualityChange(opt.value)}
-                      title={`${opt.description}${needsHevc ? " — requires H265/AV1" : ""}`}
-                    >
-                      <span>{opt.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {colorQualityRequiresHevc(settings.colorQuality) && settings.codec === "H264" && (
-                <span className="settings-input-hint">This mode requires H265 or AV1. Codec will be auto-switched.</span>
-              )}
-            </div>
-
-            {/* Bitrate slider */}
-            <div className="settings-row settings-row--column">
-              <div className="settings-row-top">
-                <label className="settings-label">Max Bitrate</label>
-                <span className="settings-value-badge">{settings.maxBitrateMbps} Mbps</span>
-              </div>
-              <input
-                type="range"
-                className="settings-slider"
-                min={5}
-                max={150}
-                step={5}
-                value={settings.maxBitrateMbps}
-                onChange={(e) => handleChange("maxBitrateMbps", parseInt(e.target.value, 10))}
-              />
-            </div>
-          </div>
-        </section>
-
-        {!capabilities.supportsHDR && (
-        <section className="settings-section" style={{ opacity: 0.5 }}>
-          <div className="settings-section-header">
-            <Sun size={18} />
-            <h2>HDR Streaming</h2>
-          </div>
-          <div className="settings-rows">
-            <span className="settings-subtle-hint">HDR streaming is not supported on Android.</span>
-          </div>
-        </section>
-        )}
-
-        {/* ── Codec Diagnostics ──────────────────────────── */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Cpu size={20} />
-            <h2>Codec Diagnostics</h2>
-          </div>
-          <div className="settings-rows">
-            <div className="settings-row codec-test-row">
-              <label className="settings-label codec-test-description">
-                Test which codecs your system can decode/encode and whether they use GPU or CPU
-              </label>
-              <button
-                className="codec-test-btn"
-                onClick={runCodecTest}
-                disabled={codecTesting}
-                type="button"
-              >
-                {codecTesting ? (
-                  <>
-                    <Loader size={16} className="settings-loading-icon" />
-                    Testing...
-                  </>
-                ) : (
-                  <>
-                    <Zap size={16} />
-                    {codecResults ? "Retest" : "Test Codecs"}
-                  </>
-                )}
-              </button>
-            </div>
-
-            {codecTestOpen && codecResults && (
-              <div className="codec-results">
-                {codecResults.map((result) => (
-                  <div key={result.codec} className="codec-result-card">
-                    <div className="codec-result-header">
-                      <span className="codec-result-name">{result.codec}</span>
-                      <span className={`codec-result-badge ${result.webrtcSupported ? "supported" : "unsupported"}`}>
-                        {result.webrtcSupported ? "WebRTC Ready" : "Not in WebRTC"}
-                      </span>
-                    </div>
-
-                    <div className="codec-result-rows">
-                      {/* Decode row */}
-                      <div className="codec-result-row">
-                        <span className="codec-result-direction">Decode</span>
-                        <span className={`codec-result-status ${result.decodeSupported ? (result.hwAccelerated ? "hw" : "sw") : "none"}`}>
-                          {result.decodeSupported
-                            ? result.hwAccelerated
-                              ? "GPU"
-                              : "CPU"
-                            : "No"}
-                        </span>
-                        <span className="codec-result-via">{result.decodeVia}</span>
-                      </div>
-
-                      {/* Encode row */}
-                      <div className="codec-result-row">
-                        <span className="codec-result-direction">Encode</span>
-                        <span className={`codec-result-status ${result.encodeSupported ? (result.encodeHwAccelerated ? "hw" : "sw") : "none"}`}>
-                          {result.encodeSupported
-                            ? result.encodeHwAccelerated
-                              ? "GPU"
-                              : "CPU"
-                            : "No"}
-                        </span>
-                        <span className="codec-result-via">{result.encodeVia}</span>
-                      </div>
-                    </div>
-
-                    {/* Profiles */}
-                    {result.profiles.length > 0 && (
-                      <div className="codec-result-profiles">
-                        <span className="codec-result-profiles-label">Profiles:</span>
-                        <div className="codec-result-profiles-list">
-                          {result.profiles.map((p, i) => (
-                            <code key={i} className="codec-result-profile">{p}</code>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="settings-chip-row">
+                {STATIC_RESOLUTION_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    className={`settings-chip ${settings.resolution === preset.value ? "active" : ""}`}
+                    onClick={() => handleChange("resolution", preset.value)}
+                  >
+                    <span>{preset.label}</span>
+                  </button>
                 ))}
               </div>
             )}
           </div>
-        </section>
 
-        {/* ── Audio ──────────────────────────────────────── */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Volume2 size={18} />
-            <h2>Audio</h2>
-          </div>
-          <div className="settings-rows">
-            <div className="settings-placeholder">Audio configuration coming soon</div>
-          </div>
-        </section>
-
-        {/* ── Input ──────────────────────────────────────── */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Mouse size={18} />
-            <h2>Input</h2>
-          </div>
-          <div className="settings-rows">
-            <div className="settings-row">
-              <label className="settings-label">Clipboard Paste</label>
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
-                  checked={settings.clipboardPaste}
-                  onChange={(e) => handleChange("clipboardPaste", e.target.checked)}
-                />
-                <span className="settings-toggle-track" />
-              </label>
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">FPS</label>
+            <div className="settings-chip-row">
+              {(hasDynamic ? dynamicFpsOptions.map((value) => ({ value })) : STATIC_FPS_PRESETS).map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  className={`settings-chip ${settings.fps === preset.value ? "active" : ""}`}
+                  onClick={() => handleChange("fps", preset.value)}
+                >
+                  <span>{preset.value}</span>
+                </button>
+              ))}
             </div>
+          </div>
 
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">Codec</label>
+            <div className="settings-chip-row">
+              {codecOptions.map((codec) => (
+                <button
+                  key={codec}
+                  type="button"
+                  className={`settings-chip ${settings.codec === codec ? "active" : ""}`}
+                  onClick={() => handleChange("codec", codec)}
+                >
+                  {codec}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            <div className="settings-row settings-row--column">
-              <label className="settings-label">Microphone</label>
-
-              <div className="settings-seg mic-mode-seg">
-                {(["off", "on", "push-to-talk"] as MicMode[]).map((m) => (
-                  <button
-                    key={m}
-                    className={`settings-seg-btn ${settings.micMode === m ? "active" : ""}`}
-                    onClick={() => handleChange("micMode", m)}
-                  >
-                    {m === "off" ? "Off" : m === "on" ? "On" : "Push-to-Talk"}
-                  </button>
-                ))}
+          {showVideoBackendSettings && (
+            <>
+              <div className="settings-row settings-row--column">
+                <label className="settings-label">Decoder</label>
+                <div className="settings-chip-row">
+                  {accelerationOptions.map((option) => (
+                    <button
+                      key={`decoder-${option.value}`}
+                      type="button"
+                      className={`settings-chip ${settings.decoderPreference === option.value ? "active" : ""}`}
+                      onClick={() => handleChange("decoderPreference", option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {settings.micMode !== "off" && (
+              <div className="settings-row settings-row--column">
+                <label className="settings-label">Encoder</label>
+                <div className="settings-chip-row">
+                  {accelerationOptions.map((option) => (
+                    <button
+                      key={`encoder-${option.value}`}
+                      type="button"
+                      className={`settings-chip ${settings.encoderPreference === option.value ? "active" : ""}`}
+                      onClick={() => handleChange("encoderPreference", option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="settings-subtle-hint">Applies after app restart.</span>
+              </div>
+            </>
+          )}
+
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">Color Quality</label>
+            <div className="settings-chip-row">
+              {colorQualityOptions.map((opt) => {
+                const needsHevc = colorQualityRequiresHevc(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`settings-chip ${settings.colorQuality === opt.value ? "active" : ""}`}
+                    onClick={() => handleColorQualityChange(opt.value)}
+                    title={`${opt.description}${needsHevc ? " — requires H265/AV1" : ""}`}
+                  >
+                    <span>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {colorQualityRequiresHevc(settings.colorQuality) && settings.codec === "H264" && (
+              <span className="settings-input-hint">This mode requires H265 or AV1. Codec will be auto-switched.</span>
+            )}
+          </div>
+
+          <div className="settings-row settings-row--column">
+            <div className="settings-row-top">
+              <label className="settings-label">Max Bitrate</label>
+              <span className="settings-value-badge">{settings.maxBitrateMbps} Mbps</span>
+            </div>
+            <input
+              type="range"
+              className="settings-slider"
+              min={5}
+              max={150}
+              step={5}
+              value={settings.maxBitrateMbps}
+              onChange={(e) => handleChange("maxBitrateMbps", parseInt(e.target.value, 10))}
+            />
+          </div>
+        </SettingsAccordionSection>
+
+        <SettingsAccordionSection title="Codec Diagnostics" icon={<Cpu size={20} />}>
+          <div className="settings-row codec-test-row settings-row--column">
+            <label className="settings-label codec-test-description">
+              Test which codecs your system can decode and whether playback uses GPU or CPU paths.
+            </label>
+            <button
+              className="codec-test-btn"
+              onClick={runCodecTest}
+              disabled={codecTesting}
+              type="button"
+            >
+              {codecTesting ? (
                 <>
-                  <div className="settings-row" style={{ marginTop: 10 }}>
-                    <label className="settings-label">Device</label>
-                    <div className="mic-device-select-wrap">
-                      <select
-                        className="settings-text-input mic-device-select"
-                        value={settings.micDeviceId || "default"}
-                        onChange={(e) => handleChange("micDeviceId", e.target.value === "default" ? "" : e.target.value)}
-                        disabled={micDevicesLoading}
-                      >
-                        <option value="default">Default Microphone</option>
-                        {micDevices
-                          .filter((d) => d.deviceId !== "default")
-                          .map((d) => (
-                            <option key={d.deviceId} value={d.deviceId}>
-                              {d.label}
-                            </option>
-                          ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="settings-shortcut-reset-btn mic-refresh-btn"
-                        onClick={() => void refreshMicDevices()}
-                        disabled={micDevicesLoading}
-                        title="Refresh devices"
-                      >
-                        <RefreshCw size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="settings-row" style={{ marginTop: 6 }}>
-                    <label className="settings-label">Input Level</label>
-                    <div className="mic-test-meter-wrap">
-                      <div className="mic-level-meter">
-                        <div
-                          className="mic-level-meter-fill"
-                          ref={micLevelRef}
-                          style={{ transform: `scaleX(${micTestLevel})` }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="settings-shortcut-reset-btn mic-test-btn"
-                        onClick={() => {
-                          if (micTestRunning) {
-                            stopMicTest();
-                          } else {
-                            void startMicTest();
-                          }
-                        }}
-                      >
-                        {micTestRunning ? <MicOff size={12} /> : <Mic size={12} />}
-                        {micTestRunning ? "Stop" : "Test"}
-                      </button>
-                    </div>
-                    {micTestError && (
-                      <span className="mic-test-error">{micTestError}</span>
-                    )}
-                  </div>
-
-                  <div className="settings-row" style={{ marginTop: 6 }}>
-                    <label className="settings-label">Gain</label>
-                    <div className="settings-input-group">
-                      <input
-                        type="range"
-                        className="settings-slider"
-                        min={0}
-                        max={200}
-                        step={1}
-                        value={Math.round(settings.micGain * 100)}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value, 10) / 100;
-                          handleChange("micGain", v);
-                          if (micTestContextRef.current) {
-                            const nodes = micTestContextRef.current.destination;
-                            void nodes;
-                          }
-                        }}
-                      />
-                      <span className="settings-value-badge">{Math.round(settings.micGain * 100)}%</span>
-                    </div>
-                  </div>
-
-                  <div className="settings-row" style={{ marginTop: 6 }}>
-                    <label className="settings-label">Noise Suppression</label>
-                    <label className="settings-toggle">
-                      <input
-                        type="checkbox"
-                        checked={settings.micNoiseSuppression}
-                        onChange={(e) => handleChange("micNoiseSuppression", e.target.checked)}
-                      />
-                      <span className="settings-toggle-track" />
-                    </label>
-                  </div>
-
-                  <div className="settings-row">
-                    <label className="settings-label">Echo Cancellation</label>
-                    <label className="settings-toggle">
-                      <input
-                        type="checkbox"
-                        checked={settings.micEchoCancellation}
-                        onChange={(e) => handleChange("micEchoCancellation", e.target.checked)}
-                      />
-                      <span className="settings-toggle-track" />
-                    </label>
-                  </div>
-
-                  <div className="settings-row">
-                    <label className="settings-label">Auto Gain Control</label>
-                    <label className="settings-toggle">
-                      <input
-                        type="checkbox"
-                        checked={settings.micAutoGainControl}
-                        onChange={(e) => handleChange("micAutoGainControl", e.target.checked)}
-                      />
-                      <span className="settings-toggle-track" />
-                    </label>
-                  </div>
-
+                  <Loader size={16} className="settings-loading-icon" />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <Zap size={16} />
+                  {codecResults ? "Retest" : "Test Codecs"}
                 </>
               )}
-            </div>
+            </button>
+          </div>
 
+          {codecTestOpen && codecResults && (
+            <div className="codec-results">
+              {codecResults.map((result) => (
+                <div key={result.codec} className="codec-result-card">
+                  <div className="codec-result-header">
+                    <span className="codec-result-name">{result.codec}</span>
+                    <span className={`codec-result-badge ${result.webrtcSupported ? "supported" : "unsupported"}`}>
+                      {result.webrtcSupported ? "WebRTC Ready" : "Not in WebRTC"}
+                    </span>
+                  </div>
+
+                  <div className="codec-result-rows">
+                    <div className="codec-result-row">
+                      <span className="codec-result-direction">Decode</span>
+                      <span className={`codec-result-status ${result.decodeSupported ? (result.hwAccelerated ? "hw" : "sw") : "none"}`}>
+                        {result.decodeSupported ? (result.hwAccelerated ? "GPU" : "CPU") : "No"}
+                      </span>
+                      <span className="codec-result-via">{result.decodeVia}</span>
+                    </div>
+
+                    <div className="codec-result-row">
+                      <span className="codec-result-direction">Encode</span>
+                      <span className={`codec-result-status ${result.encodeSupported ? (result.encodeHwAccelerated ? "hw" : "sw") : "none"}`}>
+                        {result.encodeSupported ? (result.encodeHwAccelerated ? "GPU" : "CPU") : "No"}
+                      </span>
+                      <span className="codec-result-via">{result.encodeVia}</span>
+                    </div>
+                  </div>
+
+                  {result.profiles.length > 0 && (
+                    <div className="codec-result-profiles">
+                      <span className="codec-result-profiles-label">Profiles:</span>
+                      <div className="codec-result-profiles-list">
+                        {result.profiles.map((profile, index) => (
+                          <code key={index} className="codec-result-profile">{profile}</code>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </SettingsAccordionSection>
+
+        <SettingsAccordionSection title="Audio" icon={<Volume2 size={18} />}>
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">Microphone Mode</label>
+            <div className="settings-seg mic-mode-seg">
+              {(["off", "on", "push-to-talk"] as MicMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={`settings-seg-btn ${settings.micMode === mode ? "active" : ""}`}
+                  onClick={() => handleChange("micMode", mode)}
+                >
+                  {mode === "off" ? "Off" : mode === "on" ? "On" : "Push-to-Talk"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {settings.micMode !== "off" ? (
+            <>
+              <div className="settings-row settings-row--column">
+                <label className="settings-label">Microphone Device</label>
+                <div className="mic-device-select-wrap">
+                  <select
+                    className="settings-text-input settings-text-input--full mic-device-select"
+                    value={settings.micDeviceId || "default"}
+                    onChange={(e) => handleChange("micDeviceId", e.target.value === "default" ? "" : e.target.value)}
+                    disabled={micDevicesLoading}
+                  >
+                    <option value="default">Default Microphone</option>
+                    {micDevices
+                      .filter((device) => device.deviceId !== "default")
+                      .map((device) => (
+                        <option key={device.deviceId} value={device.deviceId}>
+                          {device.label}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="settings-shortcut-reset-btn mic-refresh-btn"
+                    onClick={() => void refreshMicDevices()}
+                    disabled={micDevicesLoading}
+                    title="Refresh devices"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="settings-row settings-row--column">
+                <div className="settings-row-top">
+                  <label className="settings-label">Input Level</label>
+                  <button
+                    type="button"
+                    className="settings-shortcut-reset-btn mic-test-btn"
+                    onClick={() => {
+                      if (micTestRunning) {
+                        stopMicTest();
+                      } else {
+                        void startMicTest();
+                      }
+                    }}
+                  >
+                    {micTestRunning ? <MicOff size={14} /> : <Mic size={14} />}
+                    {micTestRunning ? "Stop Test" : "Test Input"}
+                  </button>
+                </div>
+                <div className="mic-test-meter-wrap">
+                  <div className="mic-level-meter">
+                    <div
+                      className="mic-level-meter-fill"
+                      ref={micLevelRef}
+                      style={{ transform: `scaleX(${micTestLevel})` }}
+                    />
+                  </div>
+                </div>
+                {micTestError && <span className="mic-test-error">{micTestError}</span>}
+              </div>
+
+              <div className="settings-row settings-row--column">
+                <div className="settings-row-top">
+                  <label className="settings-label">Gain</label>
+                  <span className="settings-value-badge">{Math.round(settings.micGain * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  className="settings-slider"
+                  min={0}
+                  max={200}
+                  step={1}
+                  value={Math.round(settings.micGain * 100)}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10) / 100;
+                    handleChange("micGain", value);
+                    if (micTestContextRef.current) {
+                      const nodes = micTestContextRef.current.destination;
+                      void nodes;
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="settings-row">
+                <label className="settings-label">Noise Suppression</label>
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.micNoiseSuppression}
+                    onChange={(e) => handleChange("micNoiseSuppression", e.target.checked)}
+                  />
+                  <span className="settings-toggle-track" />
+                </label>
+              </div>
+
+              <div className="settings-row">
+                <label className="settings-label">Echo Cancellation</label>
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.micEchoCancellation}
+                    onChange={(e) => handleChange("micEchoCancellation", e.target.checked)}
+                  />
+                  <span className="settings-toggle-track" />
+                </label>
+              </div>
+
+              <div className="settings-row">
+                <label className="settings-label">Auto Gain Control</label>
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={settings.micAutoGainControl}
+                    onChange={(e) => handleChange("micAutoGainControl", e.target.checked)}
+                  />
+                  <span className="settings-toggle-track" />
+                </label>
+              </div>
+            </>
+          ) : (
+            <span className="settings-subtle-hint">
+              Enable the microphone to select a device and tune input processing.
+            </span>
+          )}
+        </SettingsAccordionSection>
+
+        <SettingsAccordionSection title="Input" icon={<Mouse size={18} />}>
+          <div className="settings-row">
+            <label className="settings-label">Clipboard Paste</label>
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={settings.clipboardPaste}
+                onChange={(e) => handleChange("clipboardPaste", e.target.checked)}
+              />
+              <span className="settings-toggle-track" />
+            </label>
+          </div>
+
+          {showShortcutSettings && (
             <div className="settings-row settings-row--column">
-              <div className="settings-row-top">
-                <label className="settings-label">Shortcuts</label>
+              <div className="settings-row-top settings-row-top--wrap">
+                <label className="settings-label">Keyboard Shortcuts</label>
                 <div className="settings-shortcut-actions">
                   <span className="settings-value-badge">Editable</span>
                   <button
@@ -1253,19 +1266,21 @@ export function SettingsPage({ settings, regions, onSettingChange }: SettingsPag
                   />
                 </label>
 
-                <label className="settings-shortcut-row">
-                  <span className="settings-shortcut-label">Mouse Lock</span>
-                  <input
-                    type="text"
-                    className={`settings-text-input settings-shortcut-input ${togglePointerLockError ? "error" : ""}`}
-                    value={togglePointerLockInput}
-                    onChange={(e) => setTogglePointerLockInput(e.target.value)}
-                    onBlur={() => handleShortcutBlur("shortcutTogglePointerLock", togglePointerLockInput, setTogglePointerLockInput, setTogglePointerLockError)}
-                    onKeyDown={handleShortcutKeyDown}
-                    placeholder="F8"
-                    spellCheck={false}
-                  />
-                </label>
+                {showPointerLockShortcut && (
+                  <label className="settings-shortcut-row">
+                    <span className="settings-shortcut-label">Mouse Lock</span>
+                    <input
+                      type="text"
+                      className={`settings-text-input settings-shortcut-input ${togglePointerLockError ? "error" : ""}`}
+                      value={togglePointerLockInput}
+                      onChange={(e) => setTogglePointerLockInput(e.target.value)}
+                      onBlur={() => handleShortcutBlur("shortcutTogglePointerLock", togglePointerLockInput, setTogglePointerLockInput, setTogglePointerLockError)}
+                      onKeyDown={handleShortcutKeyDown}
+                      placeholder="F8"
+                      spellCheck={false}
+                    />
+                  </label>
+                )}
 
                 <label className="settings-shortcut-row">
                   <span className="settings-shortcut-label">Stop Stream</span>
@@ -1312,227 +1327,231 @@ export function SettingsPage({ settings, regions, onSettingChange }: SettingsPag
                 </label>
               </div>
 
-              {(toggleStatsError || togglePointerLockError || stopStreamError || toggleAntiAfkError || micToggleShortcutError) && (
-                <span className="settings-input-hint">
-                  Invalid shortcut. Use {shortcutExamples}
-                </span>
-              )}
-
-              {!toggleStatsError && !togglePointerLockError && !stopStreamError && !toggleAntiAfkError && !micToggleShortcutError && (
+              {hasShortcutError ? (
+                <span className="settings-input-hint">Invalid shortcut. Use {shortcutExamples}</span>
+              ) : (
                 <span className="settings-shortcut-hint">
                   {shortcutExamples}. Current stop shortcut: {formatShortcutForDisplay(settings.shortcutStopStream, isMac)}.
                 </span>
               )}
             </div>
-          </div>
-        </section>
+          )}
+        </SettingsAccordionSection>
 
-        {/* ── Region ────────────────────────────────────── */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Globe size={18} />
-            <h2>Region</h2>
-          </div>
-          <div className="settings-rows">
-            {/* Region selector with search */}
-            <div className="region-selector">
-              <button
-                className={`region-selected ${regionDropdownOpen ? "open" : ""}`}
-                onClick={() => setRegionDropdownOpen(!regionDropdownOpen)}
-                type="button"
-              >
-                <span className="region-selected-name">{selectedRegionName}</span>
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" className={`region-chevron ${regionDropdownOpen ? "flipped" : ""}`}>
-                  <path d="M4.47 5.97a.75.75 0 0 1 1.06 0L8 8.44l2.47-2.47a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
-                </svg>
-              </button>
+        <SettingsAccordionSection title={isAndroid ? "Network" : "Region"} icon={<Globe size={18} />}>
+          <div className="region-selector">
+            <button
+              className={`region-selected ${regionDropdownOpen ? "open" : ""}`}
+              onClick={() => setRegionDropdownOpen(!regionDropdownOpen)}
+              type="button"
+            >
+              <span className="region-selected-name">{selectedRegionName}</span>
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" className={`region-chevron ${regionDropdownOpen ? "flipped" : ""}`}>
+                <path d="M4.47 5.97a.75.75 0 0 1 1.06 0L8 8.44l2.47-2.47a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+              </svg>
+            </button>
 
-              {regionDropdownOpen && (
-                <div className="region-dropdown">
-                  <div className="region-dropdown-search">
-                    <Search size={14} className="region-dropdown-search-icon" />
-                    <input
-                      type="text"
-                      className="region-dropdown-search-input"
-                      placeholder="Search regions..."
-                      value={regionSearch}
-                      onChange={(e) => setRegionSearch(e.target.value)}
-                      autoFocus
-                    />
-                    {regionSearch && (
-                      <button className="region-dropdown-clear" onClick={() => setRegionSearch("")} type="button">
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
+            {regionDropdownOpen && (
+              <div className="region-dropdown">
+                <div className="region-dropdown-search">
+                  <Search size={14} className="region-dropdown-search-icon" />
+                  <input
+                    type="text"
+                    className="region-dropdown-search-input"
+                    placeholder="Search regions..."
+                    value={regionSearch}
+                    onChange={(e) => setRegionSearch(e.target.value)}
+                    autoFocus
+                  />
+                  {regionSearch && (
+                    <button className="region-dropdown-clear" onClick={() => setRegionSearch("")} type="button">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
 
-                  <div className="region-dropdown-list">
+                <div className="region-dropdown-list">
+                  <button
+                    className={`region-dropdown-item ${!settings.region ? "active" : ""}`}
+                    onClick={() => {
+                      handleChange("region", "");
+                      setRegionDropdownOpen(false);
+                      setRegionSearch("");
+                    }}
+                    type="button"
+                  >
+                    <Globe size={16} />
+                    <span>Auto (Best)</span>
+                    {!settings.region && <Check size={16} className="region-check" />}
+                  </button>
+
+                  {filteredRegions.map((region) => (
                     <button
-                      className={`region-dropdown-item ${!settings.region ? "active" : ""}`}
+                      key={region.url}
+                      className={`region-dropdown-item ${settings.region === region.url ? "active" : ""}`}
                       onClick={() => {
-                        handleChange("region", "");
+                        handleChange("region", region.url);
                         setRegionDropdownOpen(false);
                         setRegionSearch("");
                       }}
                       type="button"
                     >
-                      <Globe size={14} />
-                      <span>Auto (Best)</span>
-                      {!settings.region && <Check size={14} className="region-check" />}
+                      <Globe size={16} />
+                      <span>{region.name}</span>
+                      {settings.region === region.url && <Check size={16} className="region-check" />}
                     </button>
+                  ))}
 
-                    {filteredRegions.map((region) => (
-                      <button
-                        key={region.url}
-                        className={`region-dropdown-item ${settings.region === region.url ? "active" : ""}`}
-                        onClick={() => {
-                          handleChange("region", region.url);
-                          setRegionDropdownOpen(false);
-                          setRegionSearch("");
-                        }}
-                        type="button"
-                      >
-                        <Globe size={14} />
-                        <span>{region.name}</span>
-                        {settings.region === region.url && <Check size={14} className="region-check" />}
-                      </button>
-                    ))}
-
-                    {filteredRegions.length === 0 && regions.length > 0 && (
-                      <div className="region-dropdown-empty">No regions match &ldquo;{regionSearch}&rdquo;</div>
-                    )}
-                  </div>
+                  {filteredRegions.length === 0 && regions.length > 0 && (
+                    <div className="region-dropdown-empty">No regions match &ldquo;{regionSearch}&rdquo;</div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        </section>
+        </SettingsAccordionSection>
 
-        {/* ── Session Clock ─────────────────────────────── */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Monitor size={18} />
-            <h2>Session Clock</h2>
-          </div>
-          <div className="settings-rows">
-            <div className="settings-row">
-              <label className="settings-label">Show every (minutes)</label>
+        <SettingsAccordionSection title="Session Clock" icon={<Monitor size={18} />}>
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">Show every (minutes)</label>
+            <div className="settings-stepper">
+              <button
+                type="button"
+                className="settings-stepper-btn"
+                onClick={() => updateSessionClockSetting("sessionClockShowEveryMinutes", settings.sessionClockShowEveryMinutes - 1)}
+                aria-label="Decrease session clock frequency"
+              >
+                <Minus size={18} />
+              </button>
               <input
                 type="number"
-                className="settings-text-input"
-                style={{ width: 90 }}
+                className="settings-text-input settings-text-input--stepper"
                 min={0}
                 max={480}
                 step={1}
                 value={settings.sessionClockShowEveryMinutes}
-                onChange={(e) => {
-                  const val = Math.max(0, Math.min(480, Math.round(Number(e.target.value) || 0)));
-                  handleChange("sessionClockShowEveryMinutes", val);
-                }}
+                onChange={(e) => updateSessionClockSetting("sessionClockShowEveryMinutes", Number(e.target.value) || 0)}
               />
+              <button
+                type="button"
+                className="settings-stepper-btn"
+                onClick={() => updateSessionClockSetting("sessionClockShowEveryMinutes", settings.sessionClockShowEveryMinutes + 1)}
+                aria-label="Increase session clock frequency"
+              >
+                <Plus size={18} />
+              </button>
             </div>
             <span className="settings-subtle-hint">
               How often to briefly reveal the session clock while streaming. Set to 0 for always visible.
             </span>
-            <div className="settings-row">
-              <label className="settings-label">Show duration (seconds)</label>
+          </div>
+
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">Show duration (seconds)</label>
+            <div className="settings-stepper">
+              <button
+                type="button"
+                className="settings-stepper-btn"
+                onClick={() => updateSessionClockSetting("sessionClockShowDurationSeconds", settings.sessionClockShowDurationSeconds - 1)}
+                aria-label="Decrease session clock duration"
+              >
+                <Minus size={18} />
+              </button>
               <input
                 type="number"
-                className="settings-text-input"
-                style={{ width: 90 }}
+                className="settings-text-input settings-text-input--stepper"
                 min={5}
                 max={300}
                 step={1}
                 value={settings.sessionClockShowDurationSeconds}
-                onChange={(e) => {
-                  const val = Math.max(5, Math.min(300, Math.round(Number(e.target.value) || 30)));
-                  handleChange("sessionClockShowDurationSeconds", val);
-                }}
+                onChange={(e) => updateSessionClockSetting("sessionClockShowDurationSeconds", Number(e.target.value) || 30)}
               />
+              <button
+                type="button"
+                className="settings-stepper-btn"
+                onClick={() => updateSessionClockSetting("sessionClockShowDurationSeconds", settings.sessionClockShowDurationSeconds + 1)}
+                aria-label="Increase session clock duration"
+              >
+                <Plus size={18} />
+              </button>
             </div>
             <span className="settings-subtle-hint">
               How long the clock stays visible each time it appears.
             </span>
           </div>
-        </section>
+        </SettingsAccordionSection>
 
-        {/* Discord and Flight Controls removed — not supported on Android */}
-
-        {/* ── Debug ──────────────────────────────────────── */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Bug size={18} />
-            <h2>Debug</h2>
+        <SettingsAccordionSection title="Debug" icon={<Bug size={18} />}>
+          <div className="settings-row">
+            <label className="settings-label">Enable debug logging</label>
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={settings.debugLogging}
+                onChange={(e) => handleChange("debugLogging", e.target.checked)}
+              />
+              <span className="settings-toggle-track" />
+            </label>
           </div>
-          <div className="settings-rows">
-            <div className="settings-row">
-              <label className="settings-label">Enable debug logging</label>
-              <label className="settings-toggle">
-                <input
-                  type="checkbox"
-                  checked={settings.debugLogging}
-                  onChange={(e) => handleChange("debugLogging", e.target.checked)}
-                />
-                <span className="settings-toggle-track" />
-              </label>
-            </div>
-            <div className="settings-row">
-              <label className="settings-label">Copy debug info to clipboard</label>
-              <button
-                className="settings-btn-inline"
-                onClick={async () => {
-                  try {
-                    const mod = await import("@platform/debugLog");
-                    const text = mod.getDebugText(200);
-                    if (text.length === 0) {
-                      showToast("No debug lines yet", "info");
-                      return;
-                    }
+
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">Copy debug info to clipboard</label>
+            <button
+              className="settings-btn-inline settings-btn-inline--full"
+              onClick={async () => {
+                try {
+                  const mod = await import("@platform/debugLog");
+                  const text = mod.getDebugText(200);
+                  if (text.length === 0) {
+                    showToast("No debug lines yet", "info");
+                    return;
+                  }
+                  await Clipboard.write({ string: text });
+                  showToast(`Copied ${mod.getDebugLines(200).length} lines`, "success");
+                } catch (err) {
+                  showToast("Copy failed: " + String(err), "error");
+                }
+              }}
+            >
+              <Copy size={16} />
+              Copy Debug Info
+            </button>
+          </div>
+
+          <div className="settings-row settings-row--column">
+            <label className="settings-label">Share debug info</label>
+            <button
+              className="settings-btn-inline settings-btn-inline--full"
+              onClick={async () => {
+                try {
+                  const mod = await import("@platform/debugLog");
+                  const text = mod.getDebugText(200);
+                  if (text.length === 0) {
+                    showToast("No debug lines yet", "info");
+                    return;
+                  }
+                  if (navigator.share) {
+                    await navigator.share({ title: "OpenNOW Debug Logs", text });
+                  } else {
                     await Clipboard.write({ string: text });
-                    showToast(`Copied ${mod.getDebugLines(200).length} lines`, "success");
-                  } catch (err) {
-                    showToast("Copy failed: " + String(err), "error");
+                    showToast("Share not available, copied to clipboard instead", "info");
                   }
-                }}
-              >
-                <Copy size={14} />
-                Copy Debug Info
-              </button>
-            </div>
-            <div className="settings-row">
-              <label className="settings-label">Share debug info</label>
-              <button
-                className="settings-btn-inline"
-                onClick={async () => {
-                  try {
-                    const mod = await import("@platform/debugLog");
-                    const text = mod.getDebugText(200);
-                    if (text.length === 0) {
-                      showToast("No debug lines yet", "info");
-                      return;
-                    }
-                    if (navigator.share) {
-                      await navigator.share({ title: "OpenNOW Debug Logs", text });
-                    } else {
-                      await Clipboard.write({ string: text });
-                      showToast("Share not available, copied to clipboard instead", "info");
-                    }
-                  } catch (err) {
-                    if (String(err).includes("AbortError")) return;
-                    showToast("Share failed: " + String(err), "error");
-                  }
-                }}
-              >
-                <Share2 size={14} />
-                Share Debug Info
-              </button>
-            </div>
-            <span className="settings-subtle-hint">
-              When enabled, verbose HTTP request/response details are logged to the console.
-              Use chrome://inspect to view logs on a connected device.
-            </span>
+                } catch (err) {
+                  if (String(err).includes("AbortError")) return;
+                  showToast("Share failed: " + String(err), "error");
+                }
+              }}
+            >
+              <Share2 size={16} />
+              Share Debug Info
+            </button>
           </div>
-        </section>
+
+          <span className="settings-subtle-hint">
+            When enabled, verbose HTTP request and response details are logged to the console.
+            Use chrome://inspect to view logs on a connected device.
+          </span>
+        </SettingsAccordionSection>
       </div>
       <div className="settings-footer">
         <button
