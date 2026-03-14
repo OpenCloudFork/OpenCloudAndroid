@@ -32,7 +32,7 @@ import { capabilities } from "./platform/capabilities";
 
 // UI Components
 import { LoginScreen } from "./components/LoginScreen";
-import { Navbar } from "./components/Navbar";
+import { BottomTabBar, TopHeader } from "./components/Navbar";
 import { HomePage } from "./components/HomePage";
 import { LibraryPage } from "./components/LibraryPage";
 import { SettingsPage } from "./components/SettingsPage";
@@ -1797,9 +1797,7 @@ export function App(): JSX.Element {
           {startupRefreshNotice.text}
         </div>
       )}
-      <Navbar
-        currentPage={currentPage}
-        onNavigate={setCurrentPage}
+      <TopHeader
         user={authSession.user}
         subscription={subscriptionInfo}
         activeSession={navbarActiveSession}
@@ -1859,6 +1857,8 @@ export function App(): JSX.Element {
           />
         )}
       </main>
+
+      <BottomTabBar currentPage={currentPage} onNavigate={setCurrentPage} />
     </div>
     </ErrorBoundary>
     </ToastProvider>
