@@ -13,21 +13,19 @@ import { preferencesGet, preferencesSet, preferencesRemove } from "./storage";
 import AuthWebView from "./authWebView";
 import { httpGet, httpPost } from "../http";
 import { debugLog } from "../debugLog";
+import {
+  AUTH_REDIRECT_URI,
+  DEFAULT_IDP_ID,
+  GFN_CLIENT_VERSION,
+  GFN_USER_AGENT,
+  NVIDIA_CLIENT_ID,
+  NVIDIA_SCOPES,
+} from "./constants";
 
 const SERVICE_URLS_ENDPOINT = "https://pcs.geforcenow.com/v1/serviceUrls";
 const TOKEN_ENDPOINT = "https://login.nvidia.com/token";
 const USERINFO_ENDPOINT = "https://login.nvidia.com/userinfo";
 const AUTH_ENDPOINT = "https://login.nvidia.com/authorize";
-
-const CLIENT_ID = "ZU7sPN-miLujMD95LfOQ453IB0AtjM8sMyvgJ9wCXEQ";
-const SCOPES = "openid consent email tk_client age offline_access";
-const DEFAULT_IDP_ID = "PDiAhv2kJTFeQ7WOPqiQ2tRZ7lGhR2X11dXvM4TZSxg";
-
-const GFN_USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
-
-const REDIRECT_PORT = 2259;
-const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}`;
 
 const AUTH_STATE_KEY = "auth_state";
 
@@ -130,9 +128,9 @@ function buildAuthUrl(provider: LoginProvider, challenge: string): string {
   const params = new URLSearchParams({
     response_type: "code",
     device_id: generateDeviceId(),
-    scope: SCOPES,
-    client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
+    scope: NVIDIA_SCOPES,
+    client_id: NVIDIA_CLIENT_ID,
+    redirect_uri: AUTH_REDIRECT_URI,
     ui_locales: "en_US",
     nonce,
     prompt: "select_account",
@@ -148,7 +146,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string): Promis
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: AUTH_REDIRECT_URI,
     code_verifier: verifier,
   });
 
@@ -183,8 +181,8 @@ async function refreshAuthTokens(refreshToken: string): Promise<AuthTokens> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    client_id: CLIENT_ID,
-    scope: SCOPES,
+    client_id: NVIDIA_CLIENT_ID,
+    scope: NVIDIA_SCOPES,
   });
 
   const response = await httpPost(TOKEN_ENDPOINT, {
@@ -220,8 +218,8 @@ async function refreshViaClientToken(refreshToken: string): Promise<AuthTokens> 
     subject_token: refreshToken,
     subject_token_type: "urn:ietf:params:oauth:token-type:refresh_token",
     requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
-    client_id: CLIENT_ID,
-    scope: SCOPES,
+    client_id: NVIDIA_CLIENT_ID,
+    scope: NVIDIA_SCOPES,
   });
 
   const response = await httpPost(TOKEN_ENDPOINT, {
@@ -409,7 +407,7 @@ export class AndroidAuthService {
       Accept: "application/json",
       "nv-client-id": "ec7e38d4-03af-4b58-b131-cfb0495903ab",
       "nv-client-type": "NATIVE",
-      "nv-client-version": "2.0.80.173",
+      "nv-client-version": GFN_CLIENT_VERSION,
       "nv-client-streamer": "NVIDIA-CLASSIC",
       "nv-device-os": "WINDOWS",
       "nv-device-type": "DESKTOP",
@@ -447,7 +445,7 @@ export class AndroidAuthService {
 
     const result = await AuthWebView.open({
       url: authUrl,
-      redirectPattern: REDIRECT_URI,
+      redirectPattern: AUTH_REDIRECT_URI,
     });
 
     const callbackUrl = result.url;
