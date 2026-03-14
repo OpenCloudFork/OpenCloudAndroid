@@ -1,4 +1,4 @@
-import { Library, Search, Clock, Gamepad2, Loader2 } from "lucide-react";
+import { Library, Search, Clock, Gamepad2, Loader2, X } from "lucide-react";
 import type { JSX } from "react";
 import type { GameInfo } from "@shared/gfn";
 import { GameCard } from "./GameCard";
@@ -9,8 +9,6 @@ export interface LibraryPageProps {
   onSearchChange: (query: string) => void;
   onPlayGame: (game: GameInfo) => void;
   isLoading: boolean;
-  selectedGameId: string;
-  onSelectGame: (id: string) => void;
 }
 
 function formatLastPlayed(date?: string): string {
@@ -38,22 +36,29 @@ export function LibraryPage({
   onSearchChange,
   onPlayGame,
   isLoading,
-  selectedGameId,
-  onSelectGame,
 }: LibraryPageProps): JSX.Element {
-  const filteredGames = searchQuery.trim()
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredGames = normalizedSearchQuery
     ? games.filter((game) =>
-        game.title.toLowerCase().includes(searchQuery.trim().toLowerCase())
+        game.title.toLowerCase().includes(normalizedSearchQuery)
       )
     : games;
+  const visibleGameCount = normalizedSearchQuery ? filteredGames.length : games.length;
 
   return (
     <div className="library-page">
-      {/* Toolbar: title + search + count */}
       <header className="library-toolbar">
-        <div className="library-title">
-          <Library className="library-title-icon" size={22} />
-          <h1>My Library</h1>
+        <div className="library-toolbar-top">
+          <div className="library-title">
+            <Library className="library-title-icon" size={20} />
+            <h1>My Library</h1>
+          </div>
+
+          <span className="library-count">
+            {isLoading
+              ? "Loading..."
+              : `${visibleGameCount} game${visibleGameCount !== 1 ? "s" : ""}`}
+          </span>
         </div>
 
         <div className="library-search">
@@ -65,12 +70,19 @@ export function LibraryPage({
             placeholder="Search your library..."
             className="library-search-input"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              className="library-search-clear"
+              onClick={() => onSearchChange("")}
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
-
-        <span className="library-count">{games.length} game{games.length !== 1 ? "s" : ""}</span>
       </header>
 
-      {/* Game grid */}
       <div className="library-grid-area">
         {isLoading ? (
           <div className="library-empty-state">
@@ -79,13 +91,13 @@ export function LibraryPage({
           </div>
         ) : games.length === 0 ? (
           <div className="library-empty-state">
-            <Gamepad2 className="library-empty-icon" size={44} />
+            <Gamepad2 className="library-empty-icon" size={36} />
             <h3>Your library is empty</h3>
             <p>Games you own will appear here. Browse the catalog to find games.</p>
           </div>
         ) : filteredGames.length === 0 ? (
           <div className="library-empty-state">
-            <Search className="library-empty-icon" size={44} />
+            <Search className="library-empty-icon" size={36} />
             <h3>No results</h3>
             <p>No games match &ldquo;{searchQuery}&rdquo;</p>
           </div>
@@ -93,17 +105,10 @@ export function LibraryPage({
           <div className="game-grid">
             {filteredGames.map((game, index) => (
               <div key={`${game.id}-${index}`} className="library-game-wrapper">
-                <GameCard
-                  game={game}
-                  isSelected={game.id === selectedGameId}
-                  onSelect={() => onSelectGame(game.id)}
-                  onPlay={() => onPlayGame(game)}
-                />
-                {/* @ts-expect-error - lastPlayed may exist on library games */}
+                <GameCard game={game} onPlay={() => onPlayGame(game)} />
                 {game.lastPlayed && (
                   <div className="library-last-played">
                     <Clock size={12} />
-                    {/* @ts-expect-error - lastPlayed may exist on library games */}
                     <span>{formatLastPlayed(game.lastPlayed)}</span>
                   </div>
                 )}

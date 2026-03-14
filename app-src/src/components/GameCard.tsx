@@ -1,13 +1,11 @@
 import { Play, Monitor } from "lucide-react";
 import { memo } from "react";
-import type { JSX } from "react";
-import type { GameInfo, GameVariant } from "@shared/gfn";
+import type { JSX, KeyboardEvent, MouseEvent } from "react";
+import type { GameInfo } from "@shared/gfn";
 
 interface GameCardProps {
   game: GameInfo;
-  isSelected?: boolean;
   onPlay: () => void;
-  onSelect: () => void;
 }
 
 /* ── Official store brand icons (Simple Icons / MDI, viewBox 0 0 24 24) ── */
@@ -138,27 +136,29 @@ function getUniqueStores(game: GameInfo): string[] {
   return stores;
 }
 
-export const GameCard = memo(function GameCard({ game, isSelected = false, onPlay, onSelect }: GameCardProps): JSX.Element {
+export const GameCard = memo(function GameCard({ game, onPlay }: GameCardProps): JSX.Element {
   const stores = getUniqueStores(game);
 
-  const handlePlayClick = (event: React.MouseEvent): void => {
+  const handlePlayClick = (event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation();
     onPlay();
   };
 
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onPlay();
+    }
+  };
+
   return (
     <div
-      className={`game-card ${isSelected ? "selected" : ""}`}
-      onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect();
-        }
-      }}
+      className="game-card"
+      onClick={onPlay}
+      onKeyDown={handleCardKeyDown}
       role="button"
       tabIndex={0}
-      aria-label={`Select ${game.title}`}
+      aria-label={`Play ${game.title}`}
     >
       <div className="game-card-image-wrapper">
         {game.imageUrl ? (
@@ -174,16 +174,14 @@ export const GameCard = memo(function GameCard({ game, isSelected = false, onPla
           </div>
         )}
 
-        <div className="game-card-overlay">
-          <div className="game-card-gradient" />
-          <button
-            className="game-card-play-button"
-            onClick={handlePlayClick}
-            aria-label={`Play ${game.title}`}
-          >
-            <Play size={24} fill="currentColor" />
-          </button>
-        </div>
+        <button
+          type="button"
+          className="game-card-play-fab"
+          onClick={handlePlayClick}
+          aria-label={`Play ${game.title}`}
+        >
+          <Play size={20} fill="currentColor" />
+        </button>
       </div>
 
       <div className="game-card-info">

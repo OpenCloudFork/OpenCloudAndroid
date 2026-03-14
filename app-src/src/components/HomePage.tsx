@@ -1,4 +1,4 @@
-import { Search, LayoutGrid, Globe, Loader2 } from "lucide-react";
+import { Search, LayoutGrid, Globe, Loader2, X } from "lucide-react";
 import type { JSX } from "react";
 import type { GameInfo } from "@shared/gfn";
 import { GameCard } from "./GameCard";
@@ -11,8 +11,6 @@ export interface HomePageProps {
   onSearchChange: (query: string) => void;
   onPlayGame: (game: GameInfo) => void;
   isLoading: boolean;
-  selectedGameId: string;
-  onSelectGame: (id: string) => void;
 }
 
 export function HomePage({
@@ -23,32 +21,40 @@ export function HomePage({
   onSearchChange,
   onPlayGame,
   isLoading,
-  selectedGameId,
-  onSelectGame,
 }: HomePageProps): JSX.Element {
   const hasGames = games.length > 0;
+  const gameCountLabel = isLoading
+    ? "Loading..."
+    : `${games.length} game${games.length !== 1 ? "s" : ""}`;
 
   return (
     <div className="home-page">
-      {/* Top bar: tabs + search + count */}
       <header className="home-toolbar">
-        <div className="home-tabs">
-          <button
-            className={`home-tab ${source === "main" ? "active" : ""}`}
-            onClick={() => onSourceChange("main")}
-            disabled={isLoading}
-          >
-            <LayoutGrid size={15} />
-            Catalog
-          </button>
-          <button
-            className={`home-tab ${source === "public" ? "active" : ""}`}
-            onClick={() => onSourceChange("public")}
-            disabled={isLoading}
-          >
-            <Globe size={15} />
-            Public
-          </button>
+        <div className="home-toolbar-top">
+          <div className="home-tabs" role="tablist" aria-label="Game catalog source">
+            <button
+              type="button"
+              className={`home-tab ${source === "main" ? "active" : ""}`}
+              onClick={() => onSourceChange("main")}
+              disabled={isLoading}
+              aria-pressed={source === "main"}
+            >
+              <LayoutGrid size={16} />
+              Catalog
+            </button>
+            <button
+              type="button"
+              className={`home-tab ${source === "public" ? "active" : ""}`}
+              onClick={() => onSourceChange("public")}
+              disabled={isLoading}
+              aria-pressed={source === "public"}
+            >
+              <Globe size={16} />
+              Public
+            </button>
+          </div>
+
+          <span className="home-count">{gameCountLabel}</span>
         </div>
 
         <div className="home-search">
@@ -60,14 +66,19 @@ export function HomePage({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
+          {searchQuery && (
+            <button
+              type="button"
+              className="home-search-clear"
+              onClick={() => onSearchChange("")}
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
-
-        <span className="home-count">
-          {isLoading ? "Loading..." : `${games.length} game${games.length !== 1 ? "s" : ""}`}
-        </span>
       </header>
 
-      {/* Game grid */}
       <div className="home-grid-area">
         {isLoading ? (
           <div className="home-empty-state">
@@ -76,7 +87,7 @@ export function HomePage({
           </div>
         ) : !hasGames ? (
           <div className="home-empty-state">
-            <LayoutGrid size={44} className="home-empty-icon" />
+            <LayoutGrid size={36} className="home-empty-icon" />
             <h3>No games found</h3>
             <p>
               {searchQuery
@@ -90,8 +101,6 @@ export function HomePage({
               <GameCard
                 key={`${game.id}-${index}`}
                 game={game}
-                isSelected={game.id === selectedGameId}
-                onSelect={() => onSelectGame(game.id)}
                 onPlay={() => onPlayGame(game)}
               />
             ))}
