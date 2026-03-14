@@ -56,9 +56,6 @@ const STATIC_RESOLUTION_PRESETS: ResolutionPreset[] = [
   { value: "1920x1080", label: "1080p" },
   { value: "2560x1440", label: "1440p" },
   { value: "3840x2160", label: "4K" },
-  { value: "2560x1080", label: "Ultrawide 1080p" },
-  { value: "3440x1440", label: "Ultrawide 1440p" },
-  { value: "5120x1440", label: "Super Ultrawide" },
 ];
 
 const STATIC_FPS_PRESETS: FpsPreset[] = [
@@ -68,8 +65,6 @@ const STATIC_FPS_PRESETS: FpsPreset[] = [
   { value: 120 },
   { value: 144 },
   { value: 165 },
-  { value: 240 },
-  { value: 360 },
 ];
 
 const isMac = navigator.platform.toLowerCase().includes("mac");
@@ -142,9 +137,11 @@ function groupResolutions(entitled: EntitledResolution[]): ResolutionGroup[] {
     groupMap.get(cat)!.push({ width: res.width, height: res.height, value, label });
   }
 
-  // Return in canonical order
+  const HIDDEN_CATEGORIES = new Set(["21:9 Ultrawide", "32:9 Super Ultrawide"]);
+
   const result: ResolutionGroup[] = [];
   for (const cat of ASPECT_RATIO_ORDER) {
+    if (HIDDEN_CATEGORIES.has(cat)) continue;
     const items = groupMap.get(cat);
     if (items && items.length > 0) {
       result.push({ category: cat, resolutions: items });
