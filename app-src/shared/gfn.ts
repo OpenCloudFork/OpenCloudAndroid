@@ -246,6 +246,7 @@ export interface GameInfo {
   title: string;
   description?: string;
   imageUrl?: string;
+  lastPlayed?: string;
   playType?: string;
   membershipTierLabel?: string;
   selectedVariantIndex: number;

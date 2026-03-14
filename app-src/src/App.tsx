@@ -282,7 +282,6 @@ export function App(): JSX.Element {
   const [libraryGames, setLibraryGames] = useState<GameInfo[]>([]);
   const [source, setSource] = useState<GameSource>("main");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedGameId, setSelectedGameId] = useState("");
   const [variantByGameId, setVariantByGameId] = useState<Record<string, string>>({});
   const [isLoadingGames, setIsLoadingGames] = useState(false);
   const [gamesError, setGamesError] = useState<{ message: string; status?: number } | null>(null);
@@ -536,7 +535,6 @@ export function App(): JSX.Element {
             });
             setGames(mainGames);
             setSource("main");
-            setSelectedGameId(mainGames[0]?.id ?? "");
             setVariantByGameId(
               mainGames.reduce((acc, g) => {
                 acc[g.id] = defaultVariantId(g);
@@ -870,7 +868,6 @@ export function App(): JSX.Element {
       });
       setGames(mainGames);
       setSource("main");
-      setSelectedGameId(mainGames[0]?.id ?? "");
 
       // Load library
       const libGames = await window.openNow.fetchLibraryGames({
@@ -925,7 +922,6 @@ export function App(): JSX.Element {
       if (targetSource !== "library") {
         setGames(result);
         setSource(targetSource);
-        setSelectedGameId(result[0]?.id ?? "");
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -949,7 +945,6 @@ export function App(): JSX.Element {
       ]);
       setGames(mainGames);
       setSource("main");
-      setSelectedGameId(mainGames[0]?.id ?? "");
       setLibraryGames(libGames);
       setGamesError(null);
 
@@ -1832,8 +1827,6 @@ export function App(): JSX.Element {
             onSearchChange={setSearchQuery}
             onPlayGame={handlePlayGame}
             isLoading={isLoadingGames}
-            selectedGameId={selectedGameId}
-            onSelectGame={setSelectedGameId}
           />
         )}
 
@@ -1844,8 +1837,6 @@ export function App(): JSX.Element {
             onSearchChange={setSearchQuery}
             onPlayGame={handlePlayGame}
             isLoading={isLoadingGames}
-            selectedGameId={selectedGameId}
-            onSelectGame={setSelectedGameId}
           />
         )}
 
