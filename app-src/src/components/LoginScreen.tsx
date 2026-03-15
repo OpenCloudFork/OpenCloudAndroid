@@ -30,13 +30,13 @@ export function LoginScreen({
   const selectedProvider = providers.find((p) => p.idpId === selectedProviderId);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: PointerEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
   }, []);
 
   const handleProviderSelect = (providerId: string) => {
@@ -90,6 +90,8 @@ export function LoginScreen({
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={isLoading || isInitializing}
               type="button"
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="listbox"
             >
               <span className="login-select-text">
                 {isInitializing
@@ -103,13 +105,15 @@ export function LoginScreen({
             </button>
 
             {isDropdownOpen && (
-              <div className="login-dropdown">
+              <div className="login-dropdown" role="listbox" aria-label="Login providers">
                 {providers.map((provider) => (
                   <button
                     key={provider.idpId}
                     className={`login-dropdown-item ${provider.idpId === selectedProviderId ? "selected" : ""}`}
                     onClick={() => handleProviderSelect(provider.idpId)}
                     type="button"
+                    role="option"
+                    aria-selected={provider.idpId === selectedProviderId}
                   >
                     <span>{provider.displayName}</span>
                     {provider.idpId === selectedProviderId && (

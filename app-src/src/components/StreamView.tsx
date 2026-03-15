@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import { Maximize, Minimize, Gamepad2, Loader2, LogOut, Clock3, AlertTriangle, Mic, MicOff } from "lucide-react";
 import type { MicStatus } from "@shared/gfn";
 import type { StreamDiagnostics } from "../gfn/webrtcClient";
+import { capabilities } from "../platform/capabilities";
 
 interface StreamViewProps {
   videoRef: React.Ref<HTMLVideoElement>;
@@ -237,6 +238,7 @@ export const StreamView = memo(function StreamView({
   const inputQueueText = `${(stats.inputQueueBufferedBytes / 1024).toFixed(1)}KB`;
   const warningSeconds = formatWarningSeconds(streamWarning?.secondsLeft);
   const sessionTimeText = formatElapsed(sessionElapsedSeconds);
+  const showDesktopHints = capabilities.supportsDesktopShortcuts && showHints && !isConnecting;
 
   return (
     <div className="sv">
@@ -393,6 +395,7 @@ export const StreamView = memo(function StreamView({
             aria-label="Cancel exit"
           />
           <div className="sv-exit-card">
+            <div className="sv-exit-handle" aria-hidden="true" />
             <div className="sv-exit-kicker">Session Control</div>
             <h3 className="sv-exit-title">Exit Stream?</h3>
             <p className="sv-exit-text">
@@ -407,35 +410,35 @@ export const StreamView = memo(function StreamView({
                 Exit Stream
               </button>
             </div>
-            <div className="sv-exit-hint">
-              <kbd>Enter</kbd> confirm · <kbd>Esc</kbd> cancel
-            </div>
+            {capabilities.supportsDesktopShortcuts && (
+              <div className="sv-exit-hint">
+                <kbd>Enter</kbd> confirm · <kbd>Esc</kbd> cancel
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Fullscreen toggle */}
-      <button
-        className="sv-fs"
-        onClick={handleFullscreenToggle}
-        title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-      >
-        {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
-      </button>
+      <div className="sv-action-rail">
+        <button
+          className="sv-end"
+          onClick={onEndSession}
+          title="End session"
+          aria-label="End session"
+        >
+          <LogOut size={20} />
+        </button>
+        <button
+          className="sv-fs"
+          onClick={handleFullscreenToggle}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+        </button>
+      </div>
 
-      {/* End session button */}
-      <button
-        className="sv-end"
-        onClick={onEndSession}
-        title="End session"
-        aria-label="End session"
-      >
-        <LogOut size={18} />
-      </button>
-
-      {/* Keyboard hints */}
-      {showHints && !isConnecting && (
+      {showDesktopHints && (
         <div className="sv-hints">
           <div className="sv-hint"><kbd>{shortcuts.toggleStats}</kbd><span>Stats</span></div>
           <div className="sv-hint"><kbd>{shortcuts.togglePointerLock}</kbd><span>Mouse lock</span></div>

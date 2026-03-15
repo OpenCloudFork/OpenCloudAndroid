@@ -120,7 +120,7 @@ export function StreamLoading({
                 className={`sload-step${isActive ? " active" : ""}${isCompleted ? " completed" : ""}${isPending ? " pending" : ""}${isFailed ? " failed" : ""}`}
               >
                 <div className="sload-step-dot">
-                  {isFailed ? <X size={18} /> : <StepIcon size={18} />}
+                  {isFailed ? <X size={20} /> : <StepIcon size={20} />}
                 </div>
                 <span className="sload-step-name">{step.label}</span>
                 {index < steps.length - 1 && (
@@ -155,8 +155,8 @@ export function StreamLoading({
         </div>
 
         {/* Cancel */}
-        <button className="sload-cancel" onClick={onCancel} aria-label="Cancel loading">
-          <X size={16} />
+        <button className="sload-cancel" type="button" onClick={onCancel} aria-label="Cancel loading">
+          <X size={18} />
           <span>{hasError ? "Close" : "Cancel"}</span>
         </button>
       </div>
