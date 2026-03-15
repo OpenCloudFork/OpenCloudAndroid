@@ -39,7 +39,6 @@ import { fetchSubscriptionWeb, fetchDynamicRegionsWeb } from "./gfn/subscription
 import { createSessionWeb, pollSessionWeb, stopSessionWeb, getActiveSessionsWeb, claimSessionWeb } from "./gfn/cloudmatch";
 import { BrowserSignalingClient } from "./gfn/signaling";
 import { loadSettings, setSetting as setSettingStore, resetSettings as resetSettingsStore, DEFAULT_SETTINGS } from "./gfn/settings";
-import type { Settings as SettingsType } from "./gfn/settings";
 import { setDebugLogging } from "./debugLog";
 
 let signalingClient: BrowserSignalingClient | null = null;
@@ -240,18 +239,18 @@ export const openNowPlatform: OpenNowApi = {
   },
 
   async getSettings(): Promise<Settings> {
-    const s = await loadSettings() as Settings;
+    const s = await loadSettings();
     setDebugLogging(s.debugLogging ?? false);
     return s;
   },
 
   async setSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
-    await setSettingStore(key as keyof SettingsType, value as SettingsType[keyof SettingsType]);
+    await setSettingStore(key, value);
     if (key === "debugLogging") setDebugLogging(value as boolean);
   },
 
   async resetSettings(): Promise<Settings> {
-    return resetSettingsStore() as Promise<Settings>;
+    return resetSettingsStore();
   },
 
   async updateDiscordPresence(_state: DiscordPresencePayload): Promise<void> {

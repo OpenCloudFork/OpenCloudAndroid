@@ -138,6 +138,12 @@ export enum GfnErrorCode {
   NetworkErrorUnknown = 3237101592,
 }
 
+export const GFN_ERROR = {
+  SESSION_LIMIT_EXCEEDED: 3237093643,
+  INSUFFICIENT_PLAYABILITY: 3237093718,
+  SESSION_SERVER_ERROR: 3237093632,
+} as const;
+
 /** Error message entry with title and description */
 interface ErrorMessageEntry {
   title: string;

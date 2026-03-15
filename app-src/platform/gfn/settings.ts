@@ -1,46 +1,6 @@
-import type {
-  VideoCodec, ColorQuality, VideoAccelerationPreference,
-  FlightSlotConfig, HdrStreamingMode, MicMode, HevcCompatMode, VideoDecodeBackend,
-} from "@shared/gfn";
+import type { Settings } from "@shared/gfn";
 import { defaultFlightSlots } from "@shared/gfn";
 import { preferencesGet, preferencesSet } from "./storage";
-
-export interface Settings {
-  resolution: string;
-  fps: number;
-  maxBitrateMbps: number;
-  codec: VideoCodec;
-  decoderPreference: VideoAccelerationPreference;
-  encoderPreference: VideoAccelerationPreference;
-  colorQuality: ColorQuality;
-  region: string;
-  clipboardPaste: boolean;
-  mouseSensitivity: number;
-  shortcutToggleStats: string;
-  shortcutTogglePointerLock: string;
-  shortcutStopStream: string;
-  shortcutToggleAntiAfk: string;
-  windowWidth: number;
-  windowHeight: number;
-  discordPresenceEnabled: boolean;
-  discordClientId: string;
-  flightControlsEnabled: boolean;
-  flightControlsSlot: number;
-  flightSlots: FlightSlotConfig[];
-  hdrStreaming: HdrStreamingMode;
-  micMode: MicMode;
-  micDeviceId: string;
-  micGain: number;
-  micNoiseSuppression: boolean;
-  micAutoGainControl: boolean;
-  micEchoCancellation: boolean;
-  shortcutToggleMic: string;
-  hevcCompatMode: HevcCompatMode;
-  videoDecodeBackend: VideoDecodeBackend;
-  sessionClockShowEveryMinutes: number;
-  sessionClockShowDurationSeconds: number;
-  debugLogging: boolean;
-}
 
 const SETTINGS_KEY = "app_settings";
 

@@ -13,10 +13,7 @@ import type { CloudMatchRequest, CloudMatchResponse, GetSessionsResponse } from 
 import { SessionError } from "./errorCodes";
 import { httpGet, httpRequest } from "../http";
 import { debugLog, debugWarn, debugError } from "../debugLog";
-
-const GFN_USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NVIDIACEFClient/HEAD/debb5919f6 GFN-PC/2.0.80.173";
-const GFN_CLIENT_VERSION = "2.0.80.173";
+import { GFN_CLIENT_VERSION, GFN_USER_AGENT, SESSION_STATUS } from "./constants";
 
 function normalizeIceServers(response: CloudMatchResponse): IceServer[] {
   const raw = response.session.iceServerConfiguration?.iceServers ?? [];
@@ -232,7 +229,7 @@ export async function pollSessionWeb(input: SessionPollRequest): Promise<Session
 
   const sessionStatus = data.session.status;
   let signaling: ReturnType<typeof resolveSignaling> | null = null;
-  if (sessionStatus === 2 || sessionStatus === 3) {
+  if (sessionStatus === SESSION_STATUS.READY || sessionStatus === SESSION_STATUS.STREAMING) {
     try { signaling = resolveSignaling(data); } catch { /* not ready yet */ }
   }
 
@@ -291,7 +288,7 @@ export async function claimSessionWeb(input: SessionClaimRequest): Promise<Sessi
     const data = (await response.json()) as CloudMatchResponse;
     const sessionData = data.session;
 
-    if (sessionData.status === 2 || sessionData.status === 3) {
+    if (sessionData.status === SESSION_STATUS.READY || sessionData.status === SESSION_STATUS.STREAMING) {
       const signaling = resolveSignaling(data);
       return {
         sessionId: sessionData.sessionId, status: sessionData.status, zone: "",
@@ -301,7 +298,7 @@ export async function claimSessionWeb(input: SessionClaimRequest): Promise<Sessi
         mediaConnectionInfo: signaling.mediaConnectionInfo,
       };
     }
-    if (sessionData.status !== 6) break;
+    if (sessionData.status !== SESSION_STATUS.ACTIVE) break;
   }
   throw new Error("Session did not become ready after claiming");
 }
